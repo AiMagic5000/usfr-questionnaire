@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 51, 51, 51;
+  --background-rgb: 245, 248, 250;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+/* Custom scrollbar for form sections */
+.max-h-48::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-48::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.max-h-48::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.max-h-48::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Animation for loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Focus styles */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  accent-color: #0066cc;
+}
+
+/* Form validation states */
+input:invalid:not(:placeholder-shown),
+select:invalid:not(:placeholder-shown) {
+  border-color: #ef4444;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Override transition for specific elements that need different durations */
+.transition-all {
+  transition-property: all;
+  transition-duration: 300ms;
+}
