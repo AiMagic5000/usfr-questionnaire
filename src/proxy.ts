@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
 // Routes that require authentication
 const isProtectedRoute = createRouteMatcher([
@@ -6,19 +7,19 @@ const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
 ])
 
-// Public routes (no auth required)
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhook(.*)',
-])
-
 export default clerkMiddleware(async (auth, req) => {
-  // Protect questionnaire and dashboard routes
+  // Check if this is a protected route
   if (isProtectedRoute(req)) {
-    await auth.protect()
+    const { userId } = await auth()
+
+    // If no user, redirect to home page (where they can sign in)
+    if (!userId) {
+      const url = new URL('/', req.url)
+      return NextResponse.redirect(url)
+    }
   }
+
+  return NextResponse.next()
 })
 
 export const config = {
