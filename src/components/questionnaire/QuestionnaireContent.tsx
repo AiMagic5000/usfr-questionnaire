@@ -65,7 +65,11 @@ const initialFormData: FormData = {
   authorization: {},
 }
 
-export function QuestionnaireContent() {
+interface QuestionnaireContentProps {
+  embedded?: boolean
+}
+
+export function QuestionnaireContent({ embedded = false }: QuestionnaireContentProps) {
   const { user, isLoaded } = useUser()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -283,23 +287,32 @@ export function QuestionnaireContent() {
   }
 
   return (
-    <div className="min-h-screen bg-usfr-light py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header with user info and save status */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-usfr-primary">
-              Client Intake Questionnaire
-            </h1>
-            <p className="text-sm text-gray-600">
-              Welcome, {user?.firstName || user?.emailAddresses[0]?.emailAddress}
-            </p>
+    <div className={embedded ? '' : 'min-h-screen bg-usfr-light py-8 px-4'}>
+      <div className={embedded ? '' : 'max-w-4xl mx-auto'}>
+        {/* Header with user info and save status - hide when embedded */}
+        {!embedded && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-usfr-primary">
+                Client Intake Questionnaire
+              </h1>
+              <p className="text-sm text-gray-600">
+                Welcome, {user?.firstName || user?.emailAddresses[0]?.emailAddress}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <SaveStatusIndicator status={saveStatus} lastSaved={lastSaved} />
+              <UserButton afterSignOutUrl="/" />
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+        )}
+
+        {/* Save status indicator for embedded mode */}
+        {embedded && (
+          <div className="flex items-center justify-between mb-4">
             <SaveStatusIndicator status={saveStatus} lastSaved={lastSaved} />
-            <UserButton afterSignOutUrl="/" />
           </div>
-        </div>
+        )}
 
         {/* Auto-save notice */}
         <div className="bg-usfr-secondary/10 border border-usfr-secondary/30 rounded-lg p-4 mb-6 flex items-start gap-3">
@@ -322,7 +335,7 @@ export function QuestionnaireContent() {
         />
 
         {/* Form */}
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-6 md:p-8">
+        <div className={`mt-8 bg-white rounded-xl ${embedded ? 'shadow-sm' : 'shadow-lg'} p-6 md:p-8`}>
           <div className="mb-6">
             <h2 className="text-xl font-bold text-usfr-primary">
               {STEPS[currentStep - 1].name}
@@ -369,13 +382,15 @@ export function QuestionnaireContent() {
           )}
         </div>
 
-        {/* Bottom notice */}
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Need help? Call{' '}
-          <a href="tel:+18885458007" className="text-usfr-secondary font-medium hover:underline">
-            (888) 545-8007
-          </a>
-        </p>
+        {/* Bottom notice - hide when embedded */}
+        {!embedded && (
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Need help? Call{' '}
+            <a href="tel:+18885458007" className="text-usfr-secondary font-medium hover:underline">
+              (888) 545-8007
+            </a>
+          </p>
+        )}
       </div>
     </div>
   )

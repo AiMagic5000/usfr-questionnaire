@@ -1,16 +1,15 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { UnifiedDashboard } from '@/components/dashboard/UnifiedDashboard'
+import { NotaryScheduling } from '@/components/dashboard/NotaryScheduling'
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
-export default async function DashboardPage() {
+export default async function NotaryPage() {
   const { userId } = await auth()
 
   if (!userId) {
     redirect('/')
   }
 
-  return <UnifiedDashboard />
+  return <NotaryScheduling />
 }

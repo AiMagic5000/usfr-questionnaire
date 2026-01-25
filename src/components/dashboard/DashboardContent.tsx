@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { DocumentCard } from './DocumentCard'
 import {
@@ -90,6 +91,7 @@ const MOCK_DOCUMENTS: Document[] = [
 
 export function DashboardContent() {
   const { user, isLoaded } = useUser()
+  const router = useRouter()
   const [documents, setDocuments] = useState<Document[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<'all' | 'action' | 'completed'>('action')

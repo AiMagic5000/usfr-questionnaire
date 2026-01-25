@@ -8,9 +8,9 @@ export const dynamic = 'force-dynamic'
 export default async function Home() {
   const { userId } = await auth()
 
-  // Redirect to questionnaire if already signed in
+  // Redirect to dashboard if already signed in
   if (userId) {
-    redirect('/questionnaire')
+    redirect('/dashboard')
   }
 
   return <HomeContent />
