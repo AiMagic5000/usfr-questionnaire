@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   title: 'Client Intake Questionnaire | US Foreclosure Recovery',
   description: 'Complete the client intake questionnaire to begin your surplus funds claim with US Foreclosure Recovery.',
   keywords: 'foreclosure surplus funds, excess proceeds, tax sale surplus, claim recovery, foreclosure recovery',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
   openGraph: {
     title: 'Client Intake Questionnaire | US Foreclosure Recovery',
     description: 'Complete the client intake questionnaire to begin your surplus funds claim.',
