@@ -104,7 +104,7 @@ export function NotaryScheduling() {
           </p>
 
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/dashboard?tab=notary')}
             className="w-full py-3 bg-usfr-primary text-white rounded-lg font-medium hover:bg-usfr-primary/90 transition-colors"
           >
             Return to Dashboard
@@ -121,7 +121,7 @@ export function NotaryScheduling() {
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/dashboard?tab=notary')}
               className="p-2 text-gray-500 hover:text-usfr-primary hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />

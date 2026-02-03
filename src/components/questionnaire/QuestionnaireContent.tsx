@@ -6,6 +6,7 @@ import { ProgressBar } from './ProgressBar'
 import { SaveStatusIndicator } from './SaveStatusIndicator'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import {
+  AgentIdentificationStep,
   PersonalInfoStep,
   PropertyInfoStep,
   OwnershipStep,
@@ -17,6 +18,7 @@ import {
   AuthorizationStep,
 } from './steps'
 import type {
+  AgentIdentification,
   PersonalInfo,
   PropertyInfo,
   Ownership,
@@ -30,6 +32,7 @@ import type {
 import { CheckCircle, Phone, Mail, Info } from 'lucide-react'
 
 const STEPS = [
+  { id: 0, name: 'Agent Identification', shortName: 'Agent' },
   { id: 1, name: 'Personal Information', shortName: 'Personal' },
   { id: 2, name: 'Property Information', shortName: 'Property' },
   { id: 3, name: 'Ownership History', shortName: 'Ownership' },
@@ -42,6 +45,7 @@ const STEPS = [
 ]
 
 interface FormData {
+  agentIdentification: Partial<AgentIdentification> & { agentVerified?: boolean }
   personalInfo: Partial<PersonalInfo>
   propertyInfo: Partial<PropertyInfo>
   ownership: Partial<Ownership>
@@ -54,6 +58,7 @@ interface FormData {
 }
 
 const initialFormData: FormData = {
+  agentIdentification: {},
   personalInfo: {},
   propertyInfo: {},
   ownership: {},
@@ -71,7 +76,7 @@ interface QuestionnaireContentProps {
 
 export function QuestionnaireContent({ embedded = false }: QuestionnaireContentProps) {
   const { user, isLoaded } = useUser()
-  const [currentStep, setCurrentStep] = useState(1)
+  const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -115,7 +120,7 @@ export function QuestionnaireContent({ embedded = false }: QuestionnaireContentP
           const data = await response.json()
           if (data.formData) {
             setFormData(data.formData)
-            setCurrentStep(data.currentStep || 1)
+            setCurrentStep(data.currentStep ?? 0)
             setCompletedSteps(new Set(data.completedSteps || []))
             if (data.isComplete) {
               setIsComplete(true)
@@ -140,6 +145,12 @@ export function QuestionnaireContent({ embedded = false }: QuestionnaireContentP
 
   const markStepComplete = (stepId: number) => {
     setCompletedSteps((prev) => new Set([...Array.from(prev), stepId]))
+  }
+
+  const handleAgentIdentification = (data: AgentIdentification & { agentVerified: boolean }) => {
+    setFormData((prev) => ({ ...prev, agentIdentification: data }))
+    markStepComplete(0)
+    setCurrentStep(1)
   }
 
   const handlePersonalInfo = (data: PersonalInfo) => {
@@ -338,16 +349,19 @@ export function QuestionnaireContent({ embedded = false }: QuestionnaireContentP
         <div className={`mt-8 bg-white rounded-xl ${embedded ? 'shadow-sm' : 'shadow-lg'} p-6 md:p-8`}>
           <div className="mb-6">
             <h2 className="text-xl font-bold text-usfr-primary">
-              {STEPS[currentStep - 1].name}
+              {STEPS.find(s => s.id === currentStep)?.name || ''}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              Step {currentStep} of {STEPS.length}
+              Step {currentStep + 1} of {STEPS.length}
               {completedSteps.has(currentStep) && (
-                <span className="ml-2 text-green-600 font-medium">✓ Completed</span>
+                <span className="ml-2 text-green-600 font-medium">&#10003; Completed</span>
               )}
             </p>
           </div>
 
+          {currentStep === 0 && (
+            <AgentIdentificationStep data={formData.agentIdentification} onNext={handleAgentIdentification} />
+          )}
           {currentStep === 1 && (
             <PersonalInfoStep data={formData.personalInfo} onNext={handlePersonalInfo} />
           )}

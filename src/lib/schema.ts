@@ -1,5 +1,13 @@
 import { z } from 'zod'
 
+// Step 0: Agent Identification
+export const agentIdentificationSchema = z.object({
+  agentFullName: z.string().min(2, 'Agent name is required'),
+  agentPin: z.string().length(6, 'PIN must be 6 digits').regex(/^\d{6}$/, 'PIN must be numeric'),
+})
+
+export type AgentIdentification = z.infer<typeof agentIdentificationSchema>
+
 // Step 1: Personal Information
 export const personalInfoSchema = z.object({
   firstName: z.string().min(2, 'First name is required'),

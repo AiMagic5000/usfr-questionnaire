@@ -223,9 +223,10 @@ export function SignaturePad({ onComplete, onCancel }: SignaturePadProps) {
           <div className="relative">
             <canvas
               ref={canvasRef}
-              className={`w-full h-40 border-2 rounded-lg ${
+              className={`w-full h-48 sm:h-40 border-2 rounded-lg ${
                 mode === 'draw' ? 'border-gray-300 cursor-crosshair' : 'border-gray-200'
               }`}
+              style={{ touchAction: 'none' }}
               onMouseDown={mode === 'draw' ? startDrawing : undefined}
               onMouseMove={mode === 'draw' ? draw : undefined}
               onMouseUp={mode === 'draw' ? stopDrawing : undefined}
@@ -233,6 +234,7 @@ export function SignaturePad({ onComplete, onCancel }: SignaturePadProps) {
               onTouchStart={mode === 'draw' ? startDrawing : undefined}
               onTouchMove={mode === 'draw' ? draw : undefined}
               onTouchEnd={mode === 'draw' ? stopDrawing : undefined}
+              onTouchCancel={mode === 'draw' ? stopDrawing : undefined}
             />
             {mode === 'draw' && !hasSignature && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

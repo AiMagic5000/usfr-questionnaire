@@ -1,3 +1,4 @@
+export { AgentIdentificationStep } from './AgentIdentificationStep'
 export { PersonalInfoStep } from './PersonalInfoStep'
 export { PropertyInfoStep } from './PropertyInfoStep'
 export { OwnershipStep } from './OwnershipStep'

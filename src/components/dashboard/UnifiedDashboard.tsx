@@ -1,26 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser, UserButton } from '@clerk/nextjs'
 import {
   FileText,
   CheckCircle2,
   Clock,
-  AlertCircle,
   Stamp,
   PenTool,
-  Video,
   Bell,
   ChevronRight,
   Sparkles,
   ClipboardList,
   Home,
-  Settings,
-  HelpCircle
+  HelpCircle,
+  MapPin,
+  Menu,
+  X,
 } from 'lucide-react'
-import { DocumentCard } from './DocumentCard'
 import { QuestionnaireContent } from '../questionnaire/QuestionnaireContent'
+import { ContractLibrary } from './ContractLibrary'
+import { NotaryTab } from './NotaryTab'
 
 export interface Document {
   id: string
@@ -94,14 +95,24 @@ const MOCK_DOCUMENTS: Document[] = [
   },
 ]
 
-type TabType = 'overview' | 'questionnaire' | 'documents' | 'help'
+type TabType = 'overview' | 'questionnaire' | 'documents' | 'notary' | 'help'
 
 export function UnifiedDashboard() {
   const { user, isLoaded } = useUser()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [documents, setDocuments] = useState<Document[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Restore tab from URL query param
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['overview', 'questionnaire', 'documents', 'notary', 'help'].includes(tabParam)) {
+      setActiveTab(tabParam as TabType)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     // Simulate loading documents
@@ -110,6 +121,11 @@ export function UnifiedDashboard() {
       setIsLoading(false)
     }, 500)
   }, [])
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    setSidebarOpen(false)
+  }
 
   const pendingCount = documents.filter(d => d.status !== 'completed').length
   const completedCount = documents.filter(d => d.status === 'completed').length
@@ -134,13 +150,9 @@ export function UnifiedDashboard() {
       case 'questionnaire':
         return <QuestionnaireContent embedded={true} />
       case 'documents':
-        return <DocumentsTab
-          documents={documents}
-          pendingCount={pendingCount}
-          completedCount={completedCount}
-          needsNotaryCount={needsNotaryCount}
-          router={router}
-        />
+        return <ContractLibrary />
+      case 'notary':
+        return <NotaryTab />
       case 'help':
         return <HelpTab />
       default:
@@ -150,19 +162,49 @@ export function UnifiedDashboard() {
           completedCount={completedCount}
           needsNotaryCount={needsNotaryCount}
           questionnaireProgress={questionnaireProgress}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
           router={router}
         />
     }
   }
 
+  const headerTitle = () => {
+    switch (activeTab) {
+      case 'questionnaire': return 'Intake Questionnaire'
+      case 'documents': return 'Contract Documents'
+      case 'notary': return 'Find Notary'
+      case 'help': return 'Help & Support'
+      default: return 'Overview'
+    }
+  }
+
   return (
     <div className="min-h-screen bg-usfr-light flex">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 fixed h-full">
-        <div className="p-6">
-          <h1 className="text-xl font-bold text-usfr-primary">US Foreclosure</h1>
-          <p className="text-sm text-gray-500">Recovery Portal</p>
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
+        <div className="p-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-usfr-primary">US Foreclosure</h1>
+            <p className="text-sm text-gray-500">Recovery Portal</p>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <nav className="px-4 space-y-1">
@@ -170,13 +212,13 @@ export function UnifiedDashboard() {
             icon={Home}
             label="Overview"
             active={activeTab === 'overview'}
-            onClick={() => setActiveTab('overview')}
+            onClick={() => handleTabChange('overview')}
           />
           <SidebarItem
             icon={ClipboardList}
             label="Questionnaire"
             active={activeTab === 'questionnaire'}
-            onClick={() => setActiveTab('questionnaire')}
+            onClick={() => handleTabChange('questionnaire')}
             badge={questionnaireProgress < 100 ? `${questionnaireProgress}%` : undefined}
             badgeColor={questionnaireProgress < 100 ? 'yellow' : 'green'}
           />
@@ -184,15 +226,21 @@ export function UnifiedDashboard() {
             icon={FileText}
             label="Documents"
             active={activeTab === 'documents'}
-            onClick={() => setActiveTab('documents')}
+            onClick={() => handleTabChange('documents')}
             badge={pendingCount > 0 ? pendingCount.toString() : undefined}
             badgeColor="red"
+          />
+          <SidebarItem
+            icon={MapPin}
+            label="Find Notary"
+            active={activeTab === 'notary'}
+            onClick={() => handleTabChange('notary')}
           />
           <SidebarItem
             icon={HelpCircle}
             label="Help & Support"
             active={activeTab === 'help'}
-            onClick={() => setActiveTab('help')}
+            onClick={() => handleTabChange('help')}
           />
         </nav>
 
@@ -213,18 +261,26 @@ export function UnifiedDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="ml-64 flex-1">
+      <main className="lg:ml-64 flex-1 w-full">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="px-8 py-4">
+          <div className="px-4 lg:px-8 py-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-usfr-dark capitalize">
-                  {activeTab === 'questionnaire' ? 'Intake Questionnaire' : activeTab}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Welcome back, {user?.firstName || 'Client'}
-                </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="lg:hidden p-2 text-gray-500 hover:text-usfr-primary hover:bg-gray-100 rounded-lg"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="text-lg font-semibold text-usfr-dark">
+                    {headerTitle()}
+                  </h2>
+                  <p className="text-sm text-gray-500 hidden sm:block">
+                    Welcome back, {user?.firstName || 'Client'}
+                  </p>
+                </div>
               </div>
               <button className="relative p-2 text-gray-500 hover:text-usfr-primary transition-colors">
                 <Bell className="w-5 h-5" />
@@ -239,7 +295,7 @@ export function UnifiedDashboard() {
         </header>
 
         {/* Tab Content */}
-        <div className="p-8">
+        <div className="p-4 lg:p-8">
           {renderTabContent()}
         </div>
       </main>
@@ -331,19 +387,19 @@ function OverviewTab({
       </div>
 
       {/* Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Questionnaire Progress */}
         <div
           onClick={() => setActiveTab('questionnaire')}
-          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 cursor-pointer hover:border-usfr-secondary transition-colors"
+          className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 cursor-pointer hover:border-usfr-secondary transition-colors"
         >
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <ClipboardList className="w-6 h-6 text-blue-600" />
+          <div className="flex items-center gap-3 lg:gap-4 mb-3 lg:mb-4">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <ClipboardList className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-usfr-dark">{questionnaireProgress}%</p>
-              <p className="text-sm text-gray-500">Questionnaire</p>
+              <p className="text-xl lg:text-2xl font-bold text-usfr-dark">{questionnaireProgress}%</p>
+              <p className="text-xs lg:text-sm text-gray-500">Questionnaire</p>
             </div>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -357,44 +413,44 @@ function OverviewTab({
         {/* Documents Pending */}
         <div
           onClick={() => setActiveTab('documents')}
-          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 cursor-pointer hover:border-usfr-secondary transition-colors"
+          className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 cursor-pointer hover:border-usfr-secondary transition-colors"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-yellow-600" />
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Clock className="w-5 h-5 lg:w-6 lg:h-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-usfr-dark">{pendingCount}</p>
-              <p className="text-sm text-gray-500">Documents Need Attention</p>
+              <p className="text-xl lg:text-2xl font-bold text-usfr-dark">{pendingCount}</p>
+              <p className="text-xs lg:text-sm text-gray-500">Need Attention</p>
             </div>
           </div>
         </div>
 
-        {/* Notary Required */}
+        {/* Find Notary */}
         <div
-          onClick={() => router.push('/dashboard/notary')}
-          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 cursor-pointer hover:border-usfr-secondary transition-colors"
+          onClick={() => setActiveTab('notary')}
+          className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 cursor-pointer hover:border-usfr-secondary transition-colors"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Stamp className="w-6 h-6 text-purple-600" />
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-5 h-5 lg:w-6 lg:h-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-usfr-dark">{needsNotaryCount}</p>
-              <p className="text-sm text-gray-500">Require Online Notary</p>
+              <p className="text-xl lg:text-2xl font-bold text-usfr-dark">{needsNotaryCount}</p>
+              <p className="text-xs lg:text-sm text-gray-500">Require Notary</p>
             </div>
           </div>
         </div>
 
         {/* Completed */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
+        <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 lg:w-6 lg:h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-usfr-dark">{completedCount}</p>
-              <p className="text-sm text-gray-500">Documents Completed</p>
+              <p className="text-xl lg:text-2xl font-bold text-usfr-dark">{completedCount}</p>
+              <p className="text-xs lg:text-sm text-gray-500">Completed</p>
             </div>
           </div>
         </div>
@@ -432,12 +488,12 @@ function OverviewTab({
             )}
             {needsNotaryCount > 0 && (
               <button
-                onClick={() => router.push('/dashboard/notary')}
+                onClick={() => setActiveTab('notary')}
                 className="w-full flex items-center justify-between p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Video className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium text-purple-900">Schedule Notary Session</span>
+                  <MapPin className="w-5 h-5 text-purple-600" />
+                  <span className="font-medium text-purple-900">Find a Local Notary</span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-purple-600" />
               </button>
@@ -487,178 +543,6 @@ function OverviewTab({
   )
 }
 
-// Documents Tab
-function DocumentsTab({
-  documents,
-  pendingCount,
-  completedCount,
-  needsNotaryCount,
-  router
-}: {
-  documents: Document[]
-  pendingCount: number
-  completedCount: number
-  needsNotaryCount: number
-  router: ReturnType<typeof useRouter>
-}) {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'action' | 'completed'>('action')
-
-  const filteredDocuments = documents.filter(doc => {
-    if (activeFilter === 'all') return true
-    if (activeFilter === 'action') return doc.status !== 'completed'
-    if (activeFilter === 'completed') return doc.status === 'completed'
-    return true
-  })
-
-  return (
-    <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-usfr-dark">{pendingCount}</p>
-              <p className="text-sm text-gray-500">Need Attention</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Stamp className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-usfr-dark">{needsNotaryCount}</p>
-              <p className="text-sm text-gray-500">Require Notary</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-usfr-dark">{completedCount}</p>
-              <p className="text-sm text-gray-500">Completed</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* AI Notice */}
-      <div className="bg-gradient-to-r from-usfr-primary to-usfr-secondary text-white rounded-xl p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg mb-1">AI-Powered Document Preparation</h3>
-            <p className="text-white/80 text-sm">
-              Your documents are automatically populated with information from your questionnaire.
-              Simply review, sign, and you&apos;re done. Documents requiring notarization can be completed
-              via online video notary - no need to leave home.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveFilter('action')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeFilter === 'action'
-              ? 'bg-usfr-primary text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Needs Action ({pendingCount})
-        </button>
-        <button
-          onClick={() => setActiveFilter('completed')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeFilter === 'completed'
-              ? 'bg-usfr-primary text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Completed ({completedCount})
-        </button>
-        <button
-          onClick={() => setActiveFilter('all')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            activeFilter === 'all'
-              ? 'bg-usfr-primary text-white'
-              : 'bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          All Documents
-        </button>
-      </div>
-
-      {/* Document List */}
-      <div className="space-y-4">
-        {filteredDocuments.map((doc, index) => (
-          <DocumentCard
-            key={doc.id}
-            document={doc}
-            index={index + 1}
-            onSign={() => router.push(`/dashboard/sign/${doc.id}`)}
-            onNotary={() => router.push('/dashboard/notary')}
-          />
-        ))}
-
-        {filteredDocuments.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-xl">
-            <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-usfr-dark mb-2">
-              {activeFilter === 'action' ? 'All caught up!' : 'No documents yet'}
-            </h3>
-            <p className="text-gray-500">
-              {activeFilter === 'action'
-                ? 'You have no documents requiring action right now.'
-                : 'Documents will appear here once they are ready.'}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Online Notary CTA */}
-      {needsNotaryCount > 0 && (
-        <div className="bg-white rounded-xl p-6 border-2 border-purple-200">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Video className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-usfr-dark">Online Notary Available</h3>
-                <p className="text-sm text-gray-500">
-                  {needsNotaryCount} document{needsNotaryCount > 1 ? 's' : ''} require notarization.
-                  Complete it from home via secure video call.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => router.push('/dashboard/notary')}
-              className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
-            >
-              Schedule Notary Session
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // Help Tab
 function HelpTab() {
   return (
@@ -677,7 +561,7 @@ function HelpTab() {
             <h4 className="font-medium text-gray-900 mb-2">What is an online notary?</h4>
             <p className="text-sm text-gray-600">
               Online notarization allows you to have documents notarized via secure video call
-              from the comfort of your home. It&apos;s legally valid in all 50 states.
+              from the comfort of your home. It's legally valid in all 50 states.
             </p>
           </div>
           <div className="border-b border-gray-100 pb-4">
