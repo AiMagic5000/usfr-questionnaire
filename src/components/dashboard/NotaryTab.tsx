@@ -1,124 +1,178 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Phone, Search, MapPin } from 'lucide-react'
+import { Phone, Search, MapPin, Star, Filter } from 'lucide-react'
 import { CountyMap } from './CountyMap'
-import { NotaryResults, Notary } from './NotaryResults'
+import { NotaryCard, type Notary } from './NotaryResults'
+
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
+  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
+  'VA','WA','WV','WI','WY'
+]
 
 export function NotaryTab() {
+  // Map state
   const [selectedCounty, setSelectedCounty] = useState<string | null>(null)
   const [selectedState, setSelectedState] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [notaries, setNotaries] = useState<Notary[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [offset, setOffset] = useState(0)
-  const [totalCount, setTotalCount] = useState(0)
-  const [hasMore, setHasMore] = useState(false)
-  const limit = 12
+  const [mapNotaries, setMapNotaries] = useState<Notary[]>([])
+  const [mapLoading, setMapLoading] = useState(false)
+  const [mapTotal, setMapTotal] = useState(0)
 
-  // Debounce search input
+  // Directory state (separate from map)
+  const [dirNotaries, setDirNotaries] = useState<Notary[]>([])
+  const [dirLoading, setDirLoading] = useState(false)
+  const [dirTotal, setDirTotal] = useState(0)
+  const [dirOffset, setDirOffset] = useState(0)
+  const [dirHasMore, setDirHasMore] = useState(false)
+  const [dirSearch, setDirSearch] = useState('')
+  const [debouncedDirSearch, setDebouncedDirSearch] = useState('')
+  const [dirStateFilter, setDirStateFilter] = useState('')
+  const dirLimit = 12
+
+  // Load featured notaries on mount
+  useEffect(() => {
+    fetchFeatured(0)
+  }, [])
+
+  // Debounce directory search
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery)
-      setOffset(0)
-    }, 300)
-
+      setDebouncedDirSearch(dirSearch)
+      setDirOffset(0)
+    }, 400)
     return () => clearTimeout(timer)
-  }, [searchQuery])
+  }, [dirSearch])
 
-  // Fetch notaries when county is selected or search changes
+  // React to directory search or state filter changes
+  useEffect(() => {
+    if (debouncedDirSearch.trim()) {
+      fetchDirSearch(debouncedDirSearch, dirStateFilter, 0)
+    } else if (dirStateFilter) {
+      fetchDirByState(dirStateFilter, 0)
+    } else {
+      fetchFeatured(0)
+    }
+  }, [debouncedDirSearch, dirStateFilter])
+
+  // Fetch featured/top-rated notaries (no filters)
+  const fetchFeatured = async (currentOffset: number) => {
+    setDirLoading(true)
+    try {
+      const res = await fetch(
+        `/api/notaries?browse=featured&limit=${dirLimit}&offset=${currentOffset}`
+      )
+      const data = await res.json()
+      if (currentOffset === 0) {
+        setDirNotaries(data.notaries || [])
+      } else {
+        setDirNotaries(prev => [...prev, ...(data.notaries || [])])
+      }
+      setDirTotal(data.total || 0)
+      setDirHasMore((data.notaries?.length || 0) === dirLimit)
+    } catch {
+      setDirNotaries([])
+      setDirTotal(0)
+      setDirHasMore(false)
+    } finally {
+      setDirLoading(false)
+    }
+  }
+
+  // Fetch directory by search term
+  const fetchDirSearch = async (search: string, state: string, currentOffset: number) => {
+    setDirLoading(true)
+    try {
+      let url = `/api/notaries?search=${encodeURIComponent(search)}&limit=${dirLimit}&offset=${currentOffset}`
+      if (state) url += `&state=${encodeURIComponent(state)}`
+      const res = await fetch(url)
+      const data = await res.json()
+      if (currentOffset === 0) {
+        setDirNotaries(data.notaries || [])
+      } else {
+        setDirNotaries(prev => [...prev, ...(data.notaries || [])])
+      }
+      setDirTotal(data.total || 0)
+      setDirHasMore((data.notaries?.length || 0) === dirLimit)
+    } catch {
+      setDirNotaries([])
+      setDirTotal(0)
+      setDirHasMore(false)
+    } finally {
+      setDirLoading(false)
+    }
+  }
+
+  // Fetch directory by state only
+  const fetchDirByState = async (state: string, currentOffset: number) => {
+    setDirLoading(true)
+    try {
+      const res = await fetch(
+        `/api/notaries?state=${encodeURIComponent(state)}&limit=${dirLimit}&offset=${currentOffset}`
+      )
+      const data = await res.json()
+      if (currentOffset === 0) {
+        setDirNotaries(data.notaries || [])
+      } else {
+        setDirNotaries(prev => [...prev, ...(data.notaries || [])])
+      }
+      setDirTotal(data.total || 0)
+      setDirHasMore((data.notaries?.length || 0) === dirLimit)
+    } catch {
+      setDirNotaries([])
+      setDirTotal(0)
+      setDirHasMore(false)
+    } finally {
+      setDirLoading(false)
+    }
+  }
+
+  // Map: fetch notaries when county selected
   useEffect(() => {
     if (selectedCounty && selectedState) {
-      fetchNotaries(selectedCounty, selectedState, 0)
+      fetchMapNotaries(selectedCounty, selectedState)
     }
   }, [selectedCounty, selectedState])
 
-  useEffect(() => {
-    if (debouncedSearch.trim()) {
-      fetchNotariesBySearch(debouncedSearch, 0)
-    } else if (!selectedCounty) {
-      setNotaries([])
-      setTotalCount(0)
-      setHasMore(false)
-    }
-  }, [debouncedSearch])
-
-  const fetchNotaries = async (county: string, state: string, currentOffset: number) => {
-    setIsLoading(true)
+  const fetchMapNotaries = async (county: string, state: string) => {
+    setMapLoading(true)
     try {
-      const response = await fetch(
-        `/api/notaries?county=${encodeURIComponent(county)}&state=${encodeURIComponent(state)}&limit=${limit}&offset=${currentOffset}`
+      const res = await fetch(
+        `/api/notaries?county=${encodeURIComponent(county)}&state=${encodeURIComponent(state)}&limit=20`
       )
-      const data = await response.json()
-
-      if (currentOffset === 0) {
-        setNotaries(data.notaries || [])
-      } else {
-        setNotaries((prev) => [...prev, ...(data.notaries || [])])
-      }
-
-      setTotalCount(data.total || 0)
-      setHasMore((data.notaries?.length || 0) === limit)
-    } catch (error) {
-      console.error('Failed to fetch notaries:', error)
-      setNotaries([])
-      setTotalCount(0)
-      setHasMore(false)
+      const data = await res.json()
+      setMapNotaries(data.notaries || [])
+      setMapTotal(data.total || 0)
+    } catch {
+      setMapNotaries([])
+      setMapTotal(0)
     } finally {
-      setIsLoading(false)
+      setMapLoading(false)
     }
   }
 
-  const fetchNotariesBySearch = async (search: string, currentOffset: number) => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(
-        `/api/notaries?search=${encodeURIComponent(search)}&limit=${limit}&offset=${currentOffset}`
-      )
-      const data = await response.json()
-
-      if (currentOffset === 0) {
-        setNotaries(data.notaries || [])
-      } else {
-        setNotaries((prev) => [...prev, ...(data.notaries || [])])
-      }
-
-      setTotalCount(data.total || 0)
-      setHasMore((data.notaries?.length || 0) === limit)
-    } catch (error) {
-      console.error('Failed to fetch notaries:', error)
-      setNotaries([])
-      setTotalCount(0)
-      setHasMore(false)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleCountySelect = useCallback(async (countyName: string, stateAbbr: string) => {
+  const handleCountySelect = useCallback((countyName: string, stateAbbr: string) => {
     setSelectedCounty(countyName)
     setSelectedState(stateAbbr)
-    setSearchQuery('')
-    setOffset(0)
   }, [])
 
-  const handleLoadMore = () => {
-    const newOffset = offset + limit
-    setOffset(newOffset)
-
-    if (debouncedSearch.trim()) {
-      fetchNotariesBySearch(debouncedSearch, newOffset)
-    } else if (selectedCounty && selectedState) {
-      fetchNotaries(selectedCounty, selectedState, newOffset)
+  const handleDirLoadMore = () => {
+    const newOffset = dirOffset + dirLimit
+    setDirOffset(newOffset)
+    if (debouncedDirSearch.trim()) {
+      fetchDirSearch(debouncedDirSearch, dirStateFilter, newOffset)
+    } else if (dirStateFilter) {
+      fetchDirByState(dirStateFilter, newOffset)
+    } else {
+      fetchFeatured(newOffset)
     }
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Section 1: Interactive County Map */}
-      <div className="p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        {/* Info Banner */}
+    <div className="space-y-0">
+      {/* ====== SECTION 1: MAP ====== */}
+      <div className="p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-t-xl">
         <div className="mb-8 bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-400/30 rounded-xl p-6">
           <div className="flex items-start gap-4">
             <MapPin className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" />
@@ -135,22 +189,50 @@ export function NotaryTab() {
           </div>
         </div>
 
-        {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-3">
             Interactive US County Map
           </h1>
           <p className="text-slate-400">
-            Click on any county to view details • Search to find specific counties • Use state legend to filter
+            Click on any county to view notaries in that area
           </p>
         </div>
 
-        {/* County Map */}
         <CountyMap
           onCountySelect={handleCountySelect}
           selectedCounty={selectedCounty}
           selectedState={selectedState}
         />
+
+        {/* Map results (inline, compact) */}
+        {selectedCounty && selectedState && (
+          <div className="mt-6 bg-slate-800/80 rounded-xl border border-slate-700 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                {selectedCounty} County, {selectedState}
+              </h3>
+              <span className="text-sm text-slate-400">
+                {mapTotal} notar{mapTotal === 1 ? 'y' : 'ies'}
+              </span>
+            </div>
+            {mapLoading ? (
+              <div className="flex items-center gap-2 text-slate-400 text-sm">
+                <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                Loading...
+              </div>
+            ) : mapNotaries.length === 0 ? (
+              <p className="text-slate-400 text-sm">
+                No notary data for this county yet. Try a nearby county.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                {mapNotaries.map(n => (
+                  <MapNotaryRow key={n.id} notary={n} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Help CTA */}
         <div className="mt-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-slate-700 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xl">
@@ -167,115 +249,113 @@ export function NotaryTab() {
         </div>
       </div>
 
-      {/* Section 2: Notary Directory */}
-      <div className="p-6 max-w-7xl mx-auto">
-        {/* Directory Header */}
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">
-            Notary Directory
-          </h2>
-          <p className="text-slate-600">
-            Search our comprehensive database of verified mobile notaries across the United States.
-            Select a county on the map above or search by name, phone, zip code, or area code.
-          </p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, phone, zip code, or area code..."
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
-        </div>
-
-        {/* Results Count */}
-        {(notaries.length > 0 || isLoading) && (
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-slate-600">
-              Showing {notaries.length} of {totalCount} notaries
+      {/* ====== SECTION 2: NOTARY DIRECTORY (Fiverr-style) ====== */}
+      <div className="p-6 bg-white rounded-b-xl">
+        <div className="max-w-7xl mx-auto">
+          {/* Directory Header */}
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Notary Directory
+            </h2>
+            <p className="text-gray-600">
+              Browse our nationwide database of verified mobile notaries. Search by name, phone, zip code, or filter by state.
             </p>
-            {selectedCounty && selectedState && (
-              <p className="text-sm font-medium text-slate-700">
-                {selectedCounty} County, {selectedState}
-              </p>
+          </div>
+
+          {/* Search + Filters */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={dirSearch}
+                onChange={(e) => setDirSearch(e.target.value)}
+                placeholder="Search by name, phone, zip code..."
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={dirStateFilter}
+                onChange={(e) => {
+                  setDirStateFilter(e.target.value)
+                  setDirOffset(0)
+                }}
+                className="pl-9 pr-8 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer min-w-[140px]"
+              >
+                <option value="">All States</option>
+                {US_STATES.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Results Count */}
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              {dirTotal > 0
+                ? `Showing ${dirNotaries.length} of ${dirTotal} notaries`
+                : dirLoading ? 'Loading...' : 'No results'}
+            </p>
+            {!debouncedDirSearch && !dirStateFilter && dirTotal > 0 && (
+              <div className="flex items-center gap-1.5 text-sm text-amber-600 font-medium">
+                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                Top Rated
+              </div>
             )}
           </div>
-        )}
 
-        {/* Results Grid */}
-        <div className="bg-white">
-          {!selectedCounty && !debouncedSearch.trim() && notaries.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 rounded-xl border border-slate-200">
-              <MapPin className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">
-                Start Your Search
-              </h3>
-              <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                Select a county on the map above or use the search bar to find mobile notaries in your area.
+          {/* Fiverr-style Card Grid */}
+          {dirLoading && dirOffset === 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
+                  <div className="w-full h-48 bg-gray-200" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-6 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    <div className="h-4 bg-gray-200 rounded w-2/3" />
+                    <div className="flex gap-2 mt-4">
+                      <div className="h-6 bg-gray-200 rounded-full w-20" />
+                      <div className="h-6 bg-gray-200 rounded-full w-24" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : dirNotaries.length === 0 ? (
+            <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-200">
+              <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Notaries Found</h3>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">
+                Try a different search term, select a different state, or click a county on the map above.
               </p>
             </div>
           ) : (
             <>
-              {/* Notary Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                {isLoading && offset === 0 ? (
-                  // Loading skeletons
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="bg-slate-50 rounded-xl border border-slate-200 p-4 animate-pulse"
-                    >
-                      <div className="flex gap-4">
-                        <div className="w-16 h-16 rounded-lg bg-slate-200 flex-shrink-0" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 bg-slate-200 rounded w-3/4" />
-                          <div className="h-3 bg-slate-200 rounded w-1/2" />
-                          <div className="h-3 bg-slate-200 rounded w-2/3" />
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : notaries.length === 0 ? (
-                  <div className="col-span-full text-center py-12 bg-slate-50 rounded-xl border border-slate-200">
-                    <MapPin className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-700 mb-2">
-                      No Notaries Found
-                    </h3>
-                    <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                      {selectedCounty && selectedState
-                        ? `We don't have notary data for ${selectedCounty} County, ${selectedState} yet. Try a nearby county or call us for assistance.`
-                        : 'No results found for your search. Try a different term or select a county on the map.'}
-                    </p>
-                  </div>
-                ) : (
-                  notaries.map((notary) => (
-                    <NotaryCard key={notary.id} notary={notary} />
-                  ))
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {dirNotaries.map(notary => (
+                  <NotaryCard key={notary.id} notary={notary} />
+                ))}
               </div>
 
-              {/* Load More Button */}
-              {hasMore && !isLoading && (
-                <div className="text-center">
+              {/* Load More */}
+              {dirHasMore && !dirLoading && (
+                <div className="text-center mt-8">
                   <button
-                    onClick={handleLoadMore}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                    onClick={handleDirLoadMore}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                   >
-                    Load More
+                    Load More Notaries
                   </button>
                 </div>
               )}
 
-              {/* Loading More Indicator */}
-              {isLoading && offset > 0 && (
-                <div className="text-center py-4">
-                  <div className="inline-flex items-center gap-2 text-sm text-slate-600">
+              {dirLoading && dirOffset > 0 && (
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center gap-2 text-sm text-gray-500">
                     <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     Loading more...
                   </div>
@@ -289,163 +369,47 @@ export function NotaryTab() {
   )
 }
 
-// Notary Card Component (Light Theme)
-function NotaryCard({ notary }: { notary: Notary }) {
+/** Compact notary row for map results (dark theme) */
+function MapNotaryRow({ notary }: { notary: Notary }) {
   const phoneFormatted = notary.phone
     ? notary.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')
     : null
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-400/20 transition-all">
-      <div className="flex gap-4">
-        {notary.image_url ? (
-          <img
-            src={notary.image_url}
-            alt={notary.business_name}
-            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none'
-            }}
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-            <MapPin className="w-6 h-6 text-slate-400" />
+    <div className="bg-slate-700/50 rounded-lg p-3 flex gap-3 hover:bg-slate-700 transition-colors">
+      {notary.image_url ? (
+        <img
+          src={notary.image_url}
+          alt={notary.business_name}
+          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+        />
+      ) : (
+        <div className="w-12 h-12 rounded-lg bg-slate-600 flex items-center justify-center flex-shrink-0">
+          <MapPin className="w-5 h-5 text-slate-400" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <h4 className="font-semibold text-white text-sm truncate">{notary.business_name}</h4>
+        {notary.rating !== null && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+            <span className="text-xs text-slate-300">
+              {notary.rating.toFixed(1)} ({notary.review_count})
+            </span>
           </div>
         )}
-
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-slate-900 text-sm truncate">
-            {notary.business_name}
-          </h4>
-
-          {notary.rating !== null && (
-            <div className="flex items-center gap-2 mt-1">
-              <StarRating rating={notary.rating} />
-              <span className="text-xs text-slate-500">
-                {notary.rating.toFixed(1)} ({notary.review_count} reviews)
-              </span>
-            </div>
+        <div className="flex items-center gap-3 mt-1">
+          {phoneFormatted && (
+            <a href={`tel:${notary.phone}`} className="text-xs text-cyan-400 hover:underline">
+              {phoneFormatted}
+            </a>
           )}
-
-          {notary.categories && notary.categories.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {notary.categories.slice(0, 3).map((cat) => (
-                <span
-                  key={cat}
-                  className="text-xs px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded"
-                >
-                  {cat}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {notary.address && (
-            <p className="text-xs text-slate-500 mt-1.5 truncate">
-              <MapPin className="w-3 h-3 inline mr-1" />
-              {notary.address}
-              {notary.city ? `, ${notary.city}` : ''}
-              {notary.state_abbr ? `, ${notary.state_abbr}` : ''}
-            </p>
-          )}
-
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
-            {phoneFormatted && (
-              <a
-                href={`tel:${notary.phone}`}
-                className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:underline"
-              >
-                <Phone className="w-3 h-3" />
-                {phoneFormatted}
-              </a>
-            )}
-            {notary.yelp_url && (
-              <a
-                href={notary.yelp_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-red-600 hover:underline"
-              >
-                Yelp
-              </a>
-            )}
-            {notary.website_url && (
-              <a
-                href={notary.website_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-slate-600 hover:underline"
-              >
-                Website
-              </a>
-            )}
-          </div>
-
           {notary.is_mobile && (
-            <span className="inline-block mt-1.5 text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
-              Mobile Service Available
-            </span>
+            <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">Mobile</span>
           )}
         </div>
       </div>
     </div>
   )
-}
-
-// Star Rating Component (Light Theme)
-function StarRating({ rating }: { rating: number }) {
-  const stars = []
-  const fullStars = Math.floor(rating)
-  const hasHalf = rating % 1 >= 0.5
-
-  for (let i = 0; i < 5; i++) {
-    if (i < fullStars) {
-      stars.push(
-        <svg
-          key={i}
-          className="w-4 h-4 fill-yellow-400 text-yellow-400"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-        >
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-      )
-    } else if (i === fullStars && hasHalf) {
-      stars.push(
-        <svg
-          key={i}
-          className="w-4 h-4 text-yellow-400"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-        >
-          <defs>
-            <linearGradient id={`half-${i}`}>
-              <stop offset="50%" stopColor="currentColor" />
-              <stop offset="50%" stopColor="transparent" />
-            </linearGradient>
-          </defs>
-          <path
-            fill={`url(#half-${i})`}
-            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-          />
-        </svg>
-      )
-    } else {
-      stars.push(
-        <svg
-          key={i}
-          className="w-4 h-4 text-slate-300"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-        >
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-      )
-    }
-  }
-
-  return <div className="flex items-center gap-0.5">{stars}</div>
 }

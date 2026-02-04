@@ -30,10 +30,13 @@ export async function GET(request: NextRequest) {
     // Clamp limit between 1 and 50
     const limit = Math.min(Math.max(limitParam, 1), 50)
 
-    // State is optional now - only required if no search is provided
-    if (!state && !search) {
+    const browse = searchParams.get('browse')
+
+    // Allow browsing all top-rated notaries with ?browse=featured
+    // Otherwise require state or search
+    if (!state && !search && browse !== 'featured') {
       return NextResponse.json(
-        { error: 'Either state or search parameter is required' },
+        { error: 'Either state, search, or browse=featured parameter is required' },
         { status: 400 }
       )
     }
@@ -70,6 +73,14 @@ export async function GET(request: NextRequest) {
         // Use OR filter for multiple fields
         query = query.or(`business_name.ilike.%${trimmedSearch}%,city.ilike.%${trimmedSearch}%`)
       }
+    }
+
+    // For featured browsing, only show notaries with images and ratings
+    if (browse === 'featured' && !state && !search && !county) {
+      query = query
+        .not('image_url', 'is', null)
+        .not('rating', 'is', null)
+        .not('description', 'is', null)
     }
 
     // Apply ordering and pagination

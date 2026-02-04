@@ -9,16 +9,28 @@ import {
   Shield,
   FolderOpen,
 } from 'lucide-react'
+import { useUser } from '@clerk/nextjs'
 import { CONTRACT_DOCUMENTS, DOCUMENT_GROUPS, type ContractDocument } from '@/lib/contract-documents'
 import { PinEntryModal } from './PinEntryModal'
 
+const ADMIN_EMAILS = ['coreypearsonemail@gmail.com']
+
 export function ContractLibrary() {
+  const { user } = useUser()
   const [isPinValidated, setIsPinValidated] = useState(false)
   const [showPinModal, setShowPinModal] = useState(false)
   const [agentName, setAgentName] = useState('')
   const [activeGroup, setActiveGroup] = useState<string>('all')
 
   useEffect(() => {
+    // Admin bypass - no PIN needed
+    const userEmail = user?.primaryEmailAddress?.emailAddress || ''
+    if (ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
+      setIsPinValidated(true)
+      setAgentName('Admin')
+      return
+    }
+
     const savedToken = sessionStorage.getItem('usfr_agent_session')
     const savedName = sessionStorage.getItem('usfr_agent_name')
     if (savedToken && savedName) {
@@ -27,7 +39,7 @@ export function ContractLibrary() {
     } else {
       setShowPinModal(true)
     }
-  }, [])
+  }, [user])
 
   const handlePinSuccess = (name: string, token: string) => {
     sessionStorage.setItem('usfr_agent_session', token)

@@ -22,6 +22,7 @@ import {
 import { QuestionnaireContent } from '../questionnaire/QuestionnaireContent'
 import { ContractLibrary } from './ContractLibrary'
 import { NotaryTab } from './NotaryTab'
+import { CONTRACT_DOCUMENTS } from '@/lib/contract-documents'
 
 export interface Document {
   id: string
@@ -230,8 +231,8 @@ export function UnifiedDashboard() {
             label="Documents"
             active={activeTab === 'documents'}
             onClick={() => handleTabChange('documents')}
-            badge={pendingCount > 0 ? pendingCount.toString() : undefined}
-            badgeColor="red"
+            badge={CONTRACT_DOCUMENTS.length.toString()}
+            badgeColor="gray"
           />
           <SidebarItem
             icon={MapPin}
