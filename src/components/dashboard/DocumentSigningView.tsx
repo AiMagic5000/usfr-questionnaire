@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -16,6 +16,10 @@ import {
   Clock,
   Eye,
   RefreshCw,
+  Printer,
+  Edit3,
+  Mail,
+  User,
 } from 'lucide-react'
 
 interface DocumentSigningViewProps {
@@ -60,6 +64,7 @@ const statusDisplay: Record<string, { label: string; color: string; icon: typeof
 export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
   const { user, isLoaded } = useUser()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [document, setDocument] = useState<DocumentData | null>(null)
   const [signingInfo, setSigningInfo] = useState<SigningInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -68,6 +73,12 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
   const [error, setError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
   const [showEmbeddedSigning, setShowEmbeddedSigning] = useState(false)
+
+  // Client info for signing
+  const [clientEmail, setClientEmail] = useState('')
+  const [clientName, setClientName] = useState('')
+
+  const isEditMode = searchParams.get('mode') === 'edit'
 
   const loadDocument = useCallback(async () => {
     try {
@@ -81,6 +92,14 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
       if (!doc) throw new Error('Document not found')
 
       setDocument(doc)
+
+      // Pre-fill client info from form_data if available
+      if (doc.form_data?.client_email) {
+        setClientEmail(doc.form_data.client_email)
+      }
+      if (doc.form_data?.client_name) {
+        setClientName(doc.form_data.client_name)
+      }
 
       // If there's a DocuSeal submission, get signing status
       if (doc.docuseal_submission_id) {
@@ -105,12 +124,17 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
         setSigningInfo(info)
       }
     } catch {
-      // Non-critical - signing info is supplementary
+      // Non-critical
     }
   }
 
   const handleSendForSigning = async () => {
     if (!document) return
+
+    if (!clientEmail || !clientEmail.includes('@')) {
+      setSendError('Please enter a valid client email address.')
+      return
+    }
 
     setIsSending(true)
     setSendError(null)
@@ -121,6 +145,8 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           document_id: document.id,
+          client_email: clientEmail,
+          client_name: clientName || undefined,
           send_email: true,
         }),
       })
@@ -132,18 +158,16 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
 
       const result = await res.json()
 
-      // Refresh document data
       await loadDocument()
 
       if (result.signing_url) {
-        setSigningInfo(prev => ({
-          ...prev,
+        setSigningInfo({
           signing_url: result.signing_url,
           submission_id: result.submission_id,
           submitter_status: 'pending',
           completed_at: null,
           signed_documents: [],
-        }))
+        })
       }
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Failed to send for signing')
@@ -157,7 +181,6 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
     setIsRefreshing(true)
     try {
       await loadSigningInfo(document.id)
-      // Reload document to get latest status
       const res = await fetch(`/api/documents?document_id=${documentId}`)
       if (res.ok) {
         const data = await res.json()
@@ -168,7 +191,7 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
     }
   }
 
-  // Listen for DocuSeal iframe messages (signing complete)
+  // Listen for DocuSeal iframe messages
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'completed' || event.data?.event === 'completed') {
@@ -246,7 +269,9 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
   const hasSigning = !!document.docuseal_submission_id
   const isAwaitingSignature = document.status === 'sent_for_signing' || document.status === 'viewed'
   const formData = document.form_data || {}
-  const populatedFields = Object.entries(formData).filter(([, v]) => v && String(v).trim())
+  const populatedFields = Object.entries(formData).filter(
+    ([key, v]) => v && String(v).trim() && key !== 'client_email' && key !== 'client_name'
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -293,19 +318,29 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
               <h2 className="text-lg font-semibold text-gray-900">{document.title}</h2>
               <p className="text-sm text-gray-500 mt-1">{document.description}</p>
 
+              {/* Quick Actions Row */}
               <div className="flex flex-wrap items-center gap-3 mt-3">
                 <span className="text-xs text-gray-400">
                   Group: <span className="text-gray-600 capitalize">{document.document_group}</span>
                 </span>
-                {document.file_name && (
-                  <a
-                    href={document.file_url}
-                    download={document.file_name}
-                    className="inline-flex items-center gap-1 text-xs text-usfr-primary hover:underline"
-                  >
-                    <Download className="w-3 h-3" />
-                    Download Original
-                  </a>
+                {document.file_url && (
+                  <>
+                    <a
+                      href={document.file_url}
+                      download={document.file_name}
+                      className="inline-flex items-center gap-1 text-xs text-usfr-primary hover:underline"
+                    >
+                      <Download className="w-3 h-3" />
+                      Download
+                    </a>
+                    <button
+                      onClick={() => window.open(document.file_url, '_blank')}
+                      className="inline-flex items-center gap-1 text-xs text-usfr-primary hover:underline"
+                    >
+                      <Printer className="w-3 h-3" />
+                      Print
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -367,7 +402,6 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
                 </div>
               </div>
 
-              {/* Download signed documents */}
               {signingInfo?.signed_documents && signingInfo.signed_documents.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-700">Signed Documents:</p>
@@ -427,7 +461,6 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
                 </div>
               </div>
 
-              {/* Open signing page directly */}
               {signingInfo?.signing_url && (
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
@@ -456,10 +489,48 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
             <div className="space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-sm text-amber-800">
-                  This document is ready to be sent for electronic signing. The client will receive
-                  an email with a secure link to review and sign the document. All fields populated
-                  from the questionnaire will be pre-filled.
+                  {isEditMode
+                    ? 'Fill in the client details below, then send for electronic signing. DocuSeal will let the signer fill in any remaining fields on the document.'
+                    : 'Enter the client\'s email to send this document for electronic signing. The client will receive a secure link to review and sign.'}
                 </p>
+              </div>
+
+              {/* Client Info Form */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <h4 className="text-sm font-medium text-gray-700">Client Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Client Email <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="email"
+                        value={clientEmail}
+                        onChange={(e) => {
+                          setClientEmail(e.target.value)
+                          setSendError(null)
+                        }}
+                        placeholder="client@example.com"
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-usfr-secondary focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Client Name</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        placeholder="John Doe"
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-usfr-secondary focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {sendError && (
@@ -471,7 +542,7 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
 
               <button
                 onClick={handleSendForSigning}
-                disabled={isSending}
+                disabled={isSending || !clientEmail}
                 className="w-full py-4 bg-usfr-accent text-white rounded-xl font-semibold text-lg hover:bg-usfr-accent/90 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSending ? (
