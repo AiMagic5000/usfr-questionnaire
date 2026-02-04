@@ -29,7 +29,7 @@ import type {
   DocumentChecklist,
   Authorization,
 } from '@/lib/schema'
-import { CheckCircle, Phone, Mail, Info } from 'lucide-react'
+import { CheckCircle, Phone, Mail, Info, FileCheck } from 'lucide-react'
 
 const STEPS = [
   { id: 0, name: 'Agent Identification', shortName: 'Agent' },
@@ -276,7 +276,19 @@ export function QuestionnaireContent({ embedded = false }: QuestionnaireContentP
               </li>
             </ol>
           </div>
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="mt-6 mb-4">
+            <a
+              href="/dashboard?tab=documents"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-usfr-accent text-white rounded-lg font-semibold text-lg hover:bg-usfr-accent/90 transition-colors shadow-lg"
+            >
+              <FileCheck className="w-5 h-5" />
+              Sign Your Documents
+            </a>
+            <p className="text-sm text-gray-500 mt-2">
+              Your personalized document package is ready for review and signing.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="tel:+18885458007"
               className="flex items-center justify-center gap-2 px-6 py-3 bg-usfr-primary text-white rounded-lg hover:bg-usfr-primary/90 transition-colors"
