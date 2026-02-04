@@ -75,12 +75,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For featured browsing, only show notaries with images and ratings
+    // For featured browsing, show notaries with ratings (best data)
     if (browse === 'featured' && !state && !search && !county) {
-      query = query
-        .not('image_url', 'is', null)
-        .not('rating', 'is', null)
-        .not('description', 'is', null)
+      query = query.not('rating', 'is', null)
     }
 
     // Apply ordering and pagination
