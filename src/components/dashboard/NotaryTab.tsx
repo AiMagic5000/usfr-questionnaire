@@ -1,94 +1,45 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Info, Phone } from 'lucide-react'
+import { Phone } from 'lucide-react'
 import { CountyMap } from './CountyMap'
-import { NotaryResults, type Notary } from './NotaryResults'
 
 export function NotaryTab() {
   const [selectedCounty, setSelectedCounty] = useState<string | null>(null)
   const [selectedState, setSelectedState] = useState<string | null>(null)
-  const [notaries, setNotaries] = useState<Notary[]>([])
-  const [isLoading, setIsLoading] = useState(false)
 
   const handleCountySelect = useCallback(async (countyName: string, stateAbbr: string) => {
     setSelectedCounty(countyName)
     setSelectedState(stateAbbr)
-    setIsLoading(true)
-    setNotaries([])
-
-    try {
-      const params = new URLSearchParams({
-        state: stateAbbr,
-        county: countyName,
-        limit: '20',
-      })
-      const response = await fetch(`/api/notaries?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setNotaries(data.notaries || [])
-      }
-    } catch {
-      setNotaries([])
-    } finally {
-      setIsLoading(false)
-    }
   }, [])
 
   return (
-    <div className="space-y-6">
-      {/* Purple Notice */}
-      <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Info className="w-5 h-5 text-purple-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-purple-900 mb-1">
-              Find a Local Mobile Notary
-            </h3>
-            <p className="text-sm text-purple-700">
-              Depending on wherever the client lives or the people that need to
-              receive recovery funds, they can have a local notary stop by at
-              their convenience and notarize any documents necessary to complete
-              any stage of the documentation procedure.
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      {/* Header */}
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-3">
+          Interactive US County Map
+        </h1>
+        <p className="text-slate-400">
+          Click on any county to view details • Search to find specific counties • Use state legend to filter
+        </p>
       </div>
 
-      {/* Map + Results Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* County Map */}
-        <div className="lg:col-span-3">
-          <CountyMap
-            onCountySelect={handleCountySelect}
-            selectedCounty={selectedCounty}
-            selectedState={selectedState}
-          />
-        </div>
-
-        {/* Notary Results */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl border border-gray-200 p-4 min-h-[350px]">
-            <NotaryResults
-              notaries={notaries}
-              isLoading={isLoading}
-              selectedCounty={selectedCounty}
-              selectedState={selectedState}
-            />
-          </div>
-        </div>
-      </div>
+      {/* County Map */}
+      <CountyMap
+        onCountySelect={handleCountySelect}
+        selectedCounty={selectedCounty}
+        selectedState={selectedState}
+      />
 
       {/* Help CTA */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className="text-sm text-gray-600">
+      <div className="mt-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-slate-700 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xl">
+        <p className="text-sm text-slate-300">
           Can't find a notary in your area? Our team can help connect you with one.
         </p>
         <a
           href="tel:+18885458007"
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#003366] text-white rounded-lg text-sm font-medium hover:bg-[#002244] transition-colors whitespace-nowrap"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-cyan-400/30 transition-all whitespace-nowrap"
         >
           <Phone className="w-4 h-4" />
           (888) 545-8007

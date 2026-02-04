@@ -196,8 +196,11 @@ export function UnifiedDashboard() {
       >
         <div className="p-6 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-usfr-primary">US Foreclosure</h1>
-            <p className="text-sm text-gray-500">Recovery Portal</p>
+            <img
+              src="https://cdn.prod.website-files.com/67ec4cfbdf0509c176a8cdfe/67ec5c05ff123f63a8f428c7_us%20foreclosure%20recovery.png"
+              alt="US Foreclosure Recovery"
+              className="h-12 w-auto object-contain"
+            />
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
