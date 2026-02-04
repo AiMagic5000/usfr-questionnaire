@@ -167,7 +167,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create the signing submission
+    // Create the signing submission.
+    // No message object is sent -- DocuSeal uses the branded invitation_email.html.erb
+    // template with the signing link, professional layout, and company branding.
+    // Subject lines are configured per-template in DocuSeal preferences.
     const submissions = await createSubmission({
       templateId: docusealTemplateId,
       sendEmail: send_email !== false,
@@ -178,10 +181,6 @@ export async function POST(request: NextRequest) {
         external_id: document_id,
         fields: prefilledFields.length > 0 ? prefilledFields : undefined,
       }],
-      message: {
-        subject: `Action Required: ${doc.title} - US Foreclosure Recovery`,
-        body: `Dear ${recipientName || 'Valued Client'},\n\nThank you for choosing US Foreclosure Recovery to assist with your surplus recovery case.\n\nPlease review and sign the attached document "${doc.title}" at your earliest convenience. This is a secure document that requires your electronic signature to proceed with your case.\n\nIf you have any questions about this document, please contact our office directly.\n\nBest regards,\nUS Foreclosure Recovery\nclaim@usforeclosurerecovery.com`,
-      },
     })
 
     const submission = Array.isArray(submissions) ? submissions[0] : submissions
