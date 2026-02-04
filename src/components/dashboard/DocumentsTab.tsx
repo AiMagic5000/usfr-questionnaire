@@ -12,6 +12,8 @@ import {
   FileCheck,
   Loader2,
   Sparkles,
+  Send,
+  Eye,
 } from 'lucide-react'
 import { ContractLibrary } from './ContractLibrary'
 
@@ -30,17 +32,34 @@ interface CaseDocument {
   case_id: string
 }
 
-const statusConfig = {
+const statusConfig: Record<string, {
+  label: string
+  bg: string
+  text: string
+  icon: typeof Clock
+}> = {
   pending: {
     label: 'Ready to Sign',
-    bg: 'bg-green-100',
-    text: 'text-green-600',
+    bg: 'bg-amber-100',
+    text: 'text-amber-600',
     icon: PenTool,
+  },
+  sent_for_signing: {
+    label: 'Sent for Signing',
+    bg: 'bg-blue-100',
+    text: 'text-blue-600',
+    icon: Send,
+  },
+  viewed: {
+    label: 'Viewed',
+    bg: 'bg-indigo-100',
+    text: 'text-indigo-600',
+    icon: Eye,
   },
   signed: {
     label: 'Signed',
-    bg: 'bg-blue-100',
-    text: 'text-blue-600',
+    bg: 'bg-green-100',
+    text: 'text-green-600',
     icon: CheckCircle2,
   },
   printed: {
@@ -49,9 +68,7 @@ const statusConfig = {
     text: 'text-gray-500',
     icon: CheckCircle2,
   },
-} as const
-
-type StatusKey = keyof typeof statusConfig
+}
 
 export function DocumentsTab() {
   const { user } = useUser()
@@ -87,7 +104,9 @@ export function DocumentsTab() {
     }
   }
 
-  const signingQueue = caseDocuments.filter(d => d.status === 'pending')
+  const activeQueue = caseDocuments.filter(
+    d => d.status === 'pending' || d.status === 'sent_for_signing' || d.status === 'viewed'
+  )
   const signedDocs = caseDocuments.filter(d => d.status === 'signed' || d.status === 'printed')
 
   return (
@@ -103,8 +122,8 @@ export function DocumentsTab() {
             <p className="text-sm text-gray-500">
               {isLoading
                 ? 'Loading documents...'
-                : signingQueue.length > 0
-                  ? `${signingQueue.length} document${signingQueue.length !== 1 ? 's' : ''} awaiting your signature`
+                : activeQueue.length > 0
+                  ? `${activeQueue.length} document${activeQueue.length !== 1 ? 's' : ''} in the signing pipeline`
                   : hasCase
                     ? 'All documents are signed'
                     : 'Complete the questionnaire to generate your document package'}
@@ -116,10 +135,10 @@ export function DocumentsTab() {
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
           </div>
-        ) : signingQueue.length > 0 ? (
+        ) : activeQueue.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {signingQueue.map(doc => {
-              const config = statusConfig[(doc.status as StatusKey)] || statusConfig.pending
+            {activeQueue.map(doc => {
+              const config = statusConfig[doc.status] || statusConfig.pending
               const StatusIcon = config.icon
               const populatedFields = Object.values(doc.form_data || {}).filter(v => v && String(v).trim()).length
               return (
@@ -188,9 +207,10 @@ export function DocumentsTab() {
             </p>
             <div className="space-y-2">
               {signedDocs.map(doc => (
-                <div
+                <button
                   key={doc.id}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                  onClick={() => router.push(`/dashboard/sign/${doc.id}`)}
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg w-full text-left hover:bg-gray-100 transition-colors"
                 >
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -209,7 +229,8 @@ export function DocumentsTab() {
                       )}
                     </div>
                   </div>
-                </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </button>
               ))}
             </div>
           </div>

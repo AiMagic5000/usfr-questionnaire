@@ -16,12 +16,14 @@ import {
   Home,
   HelpCircle,
   MapPin,
+  Map,
   Menu,
   X,
 } from 'lucide-react'
 import { QuestionnaireContent } from '../questionnaire/QuestionnaireContent'
 import { DocumentsTab } from './DocumentsTab'
 import { NotaryTab } from './NotaryTab'
+import { NotaryMapTab } from './NotaryMapTab'
 import { CONTRACT_DOCUMENTS } from '@/lib/contract-documents'
 
 export interface CaseDocument {
@@ -39,7 +41,7 @@ export interface CaseDocument {
   case_id: string
 }
 
-type TabType = 'overview' | 'questionnaire' | 'documents' | 'notary' | 'help'
+type TabType = 'overview' | 'questionnaire' | 'documents' | 'notary' | 'notary-map' | 'help'
 
 export function UnifiedDashboard() {
   const { user, isLoaded } = useUser()
@@ -53,7 +55,7 @@ export function UnifiedDashboard() {
   // Restore tab from URL query param
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['overview', 'questionnaire', 'documents', 'notary', 'help'].includes(tabParam)) {
+    if (tabParam && ['overview', 'questionnaire', 'documents', 'notary', 'notary-map', 'help'].includes(tabParam)) {
       setActiveTab(tabParam as TabType)
     }
   }, [searchParams])
@@ -111,6 +113,8 @@ export function UnifiedDashboard() {
         return <DocumentsTab />
       case 'notary':
         return <NotaryTab />
+      case 'notary-map':
+        return <NotaryMapTab />
       case 'help':
         return <HelpTab />
       default:
@@ -131,6 +135,7 @@ export function UnifiedDashboard() {
       case 'questionnaire': return 'Intake Questionnaire'
       case 'documents': return 'Contract Documents'
       case 'notary': return 'Find Notary'
+      case 'notary-map': return 'Notary Map'
       case 'help': return 'Help & Support'
       default: return 'Overview'
     }
@@ -196,6 +201,12 @@ export function UnifiedDashboard() {
             label="Find Notary"
             active={activeTab === 'notary'}
             onClick={() => handleTabChange('notary')}
+          />
+          <SidebarItem
+            icon={Map}
+            label="Notary Map"
+            active={activeTab === 'notary-map'}
+            onClick={() => handleTabChange('notary-map')}
           />
           <SidebarItem
             icon={HelpCircle}

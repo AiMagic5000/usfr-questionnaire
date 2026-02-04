@@ -75,15 +75,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For featured browsing, show notaries with ratings (best data)
-    if (browse === 'featured' && !state && !search && !county) {
-      query = query.not('rating', 'is', null)
-    }
-
     // Apply ordering and pagination
+    // Notaries with ratings appear first, then alphabetical
     query = query
       .order('rating', { ascending: false, nullsFirst: false })
-      .order('review_count', { ascending: false })
+      .order('review_count', { ascending: false, nullsFirst: false })
+      .order('business_name', { ascending: true })
       .range(offset, offset + limit - 1)
 
     const { data, error, count } = await query
