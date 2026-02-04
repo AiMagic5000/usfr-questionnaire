@@ -92,7 +92,7 @@ export function ContractLibrary() {
     setPreparingDoc(doc.id)
     try {
       const data = await prepareDocument(doc)
-      router.push(`/dashboard/sign/${data.document_id}`)
+      router.push(`/dashboard/prepare/${data.document_id}`)
     } catch {
       alert('Failed to prepare document for signing. Please try again.')
     } finally {
@@ -117,7 +117,7 @@ export function ContractLibrary() {
     setPreparingDoc(doc.id)
     try {
       const data = await prepareDocument(doc)
-      router.push(`/dashboard/sign/${data.document_id}?mode=edit`)
+      router.push(`/dashboard/prepare/${data.document_id}`)
     } catch {
       alert('Failed to prepare document. Please try again.')
     } finally {

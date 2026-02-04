@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAgentsServerClient } from '@/lib/supabase-agents'
+import { getContractDocument } from '@/lib/contract-documents'
 
 /**
  * POST /api/documents/prepare
  * Creates a document record from a contract template for signing.
  * Optionally pulls intake questionnaire data to auto-populate document fields.
- * Body: { template_id, title, filename, description, group, client_email?, client_name?, clerk_user_id? }
+ * Body: { template_id, title, filename, description, group, client_email?, client_name?, clerk_user_id?, docuseal_template_id? }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,10 +26,23 @@ export async function POST(request: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://usfr.vercel.app'
     const fileUrl = `${siteUrl}/documents/${filename}`
 
+    // Look up contract document metadata for accurate requires_notary
+    const contractDoc = getContractDocument(template_id)
+    const requiresNotary = contractDoc?.requiresNotary ?? group === 'notary'
+
     // Build form_data - start with any provided client info
     const formData: Record<string, string> = {}
     if (client_email) formData.client_email = client_email
     if (client_name) formData.client_name = client_name
+
+    // Auto-fill defaults from placeholder field definitions
+    if (contractDoc) {
+      for (const field of contractDoc.placeholderFields) {
+        if (field.defaultValue && !formData[field.formDataKey]) {
+          formData[field.formDataKey] = field.defaultValue
+        }
+      }
+    }
 
     // Pull questionnaire data to auto-populate document fields
     if (clerk_user_id) {
@@ -81,7 +95,7 @@ export async function POST(request: NextRequest) {
         file_name: filename,
         document_group: group || 'agreements',
         status: 'pending',
-        requires_notary: group === 'notary',
+        requires_notary: requiresNotary,
         form_data: formData,
         priority: 1,
         docuseal_template_id: docuseal_template_id || null,
@@ -99,6 +113,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       document_id: doc.id,
       file_url: fileUrl,
+      requires_notary: requiresNotary,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error'

@@ -41,15 +41,21 @@ export async function GET(request: NextRequest) {
     // If there's already a DocuSeal submission, get its status
     if (doc.docuseal_submission_id) {
       const submission = await getSubmission(doc.docuseal_submission_id)
-      const submitter = submission.submitters?.[0]
+      const clientSubmitter = submission.submitters?.find(s => s.role === 'First Party') || submission.submitters?.[0]
+      const notarySubmitter = submission.submitters?.find(s => s.role === 'Notary')
+
       return NextResponse.json({
         document_id: documentId,
         status: doc.status,
         docuseal_submission_id: doc.docuseal_submission_id,
-        signing_url: submitter?.embed_src || null,
-        submitter_status: submitter?.status || null,
-        completed_at: submitter?.completed_at || null,
-        signed_documents: submitter?.documents || [],
+        signing_url: clientSubmitter?.embed_src || null,
+        submitter_status: clientSubmitter?.status || null,
+        completed_at: clientSubmitter?.completed_at || null,
+        signed_documents: clientSubmitter?.documents || [],
+        // Notary info
+        notary_signing_url: notarySubmitter?.embed_src || null,
+        notary_status: notarySubmitter?.status || null,
+        notary_completed_at: notarySubmitter?.completed_at || null,
       })
     }
 
@@ -67,19 +73,37 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/docuseal - Create a signing request for a document
- * Body: { document_id, client_email, client_name }
+ * Body: {
+ *   document_id,
+ *   client_email,
+ *   client_name,
+ *   send_email?,
+ *   prepared_fields?,
+ *   notary_email?,
+ *   notary_name?,
+ *   notary_id?
+ * }
  *
  * Flow:
  * 1. Look up the document and its template
- * 2. Ensure a DocuSeal template exists (create from DOCX if not)
- * 3. Create a DocuSeal submission with pre-filled fields
+ * 2. Create a DocuSeal submission with pre-filled fields
+ * 3. If notary info provided, add second submitter with "Notary" role
  * 4. Store the submission ID and signing URL on the document
- * 5. Return the embed signing URL
+ * 5. Return the embed signing URLs
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { document_id, client_email, client_name, send_email } = body
+    const {
+      document_id,
+      client_email,
+      client_name,
+      send_email,
+      prepared_fields,
+      notary_email,
+      notary_name,
+      notary_id,
+    } = body
 
     if (!document_id) {
       return NextResponse.json({ error: 'document_id is required' }, { status: 400 })
@@ -101,15 +125,18 @@ export async function POST(request: NextRequest) {
     // If already has a submission, return existing signing URL
     if (doc.docuseal_submission_id) {
       const existing = await getSubmission(doc.docuseal_submission_id)
-      const submitter = existing.submitters?.[0]
+      const clientSubmitter = existing.submitters?.find(s => s.role === 'First Party') || existing.submitters?.[0]
+      const notarySubmitter = existing.submitters?.find(s => s.role === 'Notary')
       return NextResponse.json({
-        signing_url: submitter?.embed_src || null,
+        signing_url: clientSubmitter?.embed_src || null,
         submission_id: doc.docuseal_submission_id,
-        status: submitter?.status || 'pending',
+        status: clientSubmitter?.status || 'pending',
+        notary_signing_url: notarySubmitter?.embed_src || null,
+        notary_status: notarySubmitter?.status || null,
       })
     }
 
-    // Determine client email from document's case
+    // Determine client email from document's case if not provided
     let recipientEmail = client_email
     let recipientName = client_name
 
@@ -134,7 +161,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the pre-existing DocuSeal template ID stored on the document record.
-    // Templates were created via Rails console from PDFs (IDs 17-32).
     const docusealTemplateId = doc.docuseal_template_id
 
     if (!docusealTemplateId) {
@@ -144,9 +170,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build pre-filled fields from the document's form_data
+    // Build pre-filled fields from prepared_fields or document's form_data
     const prefilledFields: Array<{ name: string; default_value: string; readonly: boolean }> = []
-    const formData = doc.form_data || {}
+    const formData = prepared_fields || doc.form_data || {}
 
     // Get the DocuSeal template to map field names
     const dsTemplate = await getTemplate(docusealTemplateId)
@@ -167,6 +193,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Build submitters array
+    const submitters: Array<{
+      email: string
+      name?: string
+      role: string
+      external_id?: string
+      fields?: Array<{ name: string; default_value: string; readonly: boolean }>
+    }> = [
+      {
+        email: recipientEmail,
+        name: recipientName || undefined,
+        role: 'First Party',
+        external_id: document_id,
+        fields: prefilledFields.length > 0 ? prefilledFields : undefined,
+      },
+    ]
+
+    // Add notary as second submitter if provided
+    if (notary_email && notary_name) {
+      submitters.push({
+        email: notary_email,
+        name: notary_name,
+        role: 'Notary',
+        external_id: `${document_id}-notary`,
+      })
+    }
+
     // Create the signing submission.
     // No message object is sent -- DocuSeal uses the branded invitation_email.html.erb
     // template with the signing link, professional layout, and company branding.
@@ -174,26 +227,29 @@ export async function POST(request: NextRequest) {
     const submissions = await createSubmission({
       templateId: docusealTemplateId,
       sendEmail: send_email !== false,
-      submitters: [{
-        email: recipientEmail,
-        name: recipientName || undefined,
-        role: 'First Party',
-        external_id: document_id,
-        fields: prefilledFields.length > 0 ? prefilledFields : undefined,
-      }],
+      submitters,
+      // When notary is involved, both can sign independently
+      order: submitters.length > 1 ? 'random' : undefined,
     })
 
     const submission = Array.isArray(submissions) ? submissions[0] : submissions
-    const submitter = submission?.submitters?.[0]
+    const clientSubmitter = submission?.submitters?.find(s => s.role === 'First Party') || submission?.submitters?.[0]
+    const notarySubmitter = submission?.submitters?.find(s => s.role === 'Notary')
 
-    // Store DocuSeal IDs on our document record
+    // Store DocuSeal IDs and notary info on our document record
     await supabase
       .from('documents')
       .update({
         docuseal_submission_id: submission?.id || null,
         docuseal_template_id: docusealTemplateId,
-        docuseal_submitter_id: submitter?.id || null,
-        docuseal_signing_url: submitter?.embed_src || null,
+        docuseal_submitter_id: clientSubmitter?.id || null,
+        docuseal_signing_url: clientSubmitter?.embed_src || null,
+        docuseal_notary_submitter_id: notarySubmitter?.id || null,
+        notary_email: notary_email || null,
+        notary_name: notary_name || null,
+        notary_id: notary_id || null,
+        prepared_fields: prepared_fields || null,
+        prepared_at: new Date().toISOString(),
         status: 'sent_for_signing',
       })
       .eq('id', document_id)
@@ -207,13 +263,18 @@ export async function POST(request: NextRequest) {
         docuseal_submission_id: submission?.id,
         recipient_email: recipientEmail,
         recipient_name: recipientName,
+        notary_email: notary_email || null,
+        notary_name: notary_name || null,
+        has_notary: !!notary_email,
       },
     })
 
     return NextResponse.json({
-      signing_url: submitter?.embed_src || null,
+      signing_url: clientSubmitter?.embed_src || null,
       submission_id: submission?.id || null,
-      submitter_id: submitter?.id || null,
+      submitter_id: clientSubmitter?.id || null,
+      notary_signing_url: notarySubmitter?.embed_src || null,
+      notary_submitter_id: notarySubmitter?.id || null,
       status: 'sent_for_signing',
     })
   } catch (err) {

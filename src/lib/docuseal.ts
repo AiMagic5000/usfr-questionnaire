@@ -256,6 +256,32 @@ export async function getSubmitter(id: number): Promise<DocuSealSubmitter> {
   return docusealFetch(`/submitters/${id}`)
 }
 
+// ---- Template Update ----
+
+interface UpdateTemplateOptions {
+  name?: string
+  fields?: Array<{
+    name: string
+    type?: string
+    required?: boolean
+    submitter_uuid?: string
+  }>
+  submitters?: Array<{
+    name: string
+    uuid?: string
+  }>
+}
+
+/**
+ * Update a template's fields and/or submitter roles.
+ */
+export async function updateTemplate(id: number, data: UpdateTemplateOptions): Promise<DocuSealTemplate> {
+  return docusealFetch(`/templates/${id}`, {
+    method: 'PUT',
+    body: data,
+  })
+}
+
 // ---- Utility ----
 
 export function getDocuSealBaseUrl(): string {
