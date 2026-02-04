@@ -24,77 +24,20 @@ import { DocumentsTab } from './DocumentsTab'
 import { NotaryTab } from './NotaryTab'
 import { CONTRACT_DOCUMENTS } from '@/lib/contract-documents'
 
-export interface Document {
+export interface CaseDocument {
   id: string
   title: string
   description: string
-  status: 'pending' | 'ready_to_sign' | 'awaiting_notary' | 'completed'
+  status: string
   priority: number
-  requiresNotary: boolean
-  aiPopulated: boolean
-  signedAt?: string
-  notarizedAt?: string
-  dueDate?: string
+  requires_notary: boolean
+  document_group: string
+  form_data: Record<string, string>
+  signature_url: string | null
+  signed_at: string | null
+  notarized_at: string | null
+  case_id: string
 }
-
-// Mock documents - in production, fetch from API
-const MOCK_DOCUMENTS: Document[] = [
-  {
-    id: 'doc-1',
-    title: 'Surplus Funds Claim Application',
-    description: 'Main claim form with your property and personal information',
-    status: 'ready_to_sign',
-    priority: 1,
-    requiresNotary: false,
-    aiPopulated: true,
-  },
-  {
-    id: 'doc-2',
-    title: 'Authorization to Release Information',
-    description: 'Allows us to obtain records from county and financial institutions',
-    status: 'ready_to_sign',
-    priority: 2,
-    requiresNotary: false,
-    aiPopulated: true,
-  },
-  {
-    id: 'doc-3',
-    title: 'Power of Attorney (Limited)',
-    description: 'Authorizes our team to file claims on your behalf',
-    status: 'pending',
-    priority: 3,
-    requiresNotary: true,
-    aiPopulated: false,
-  },
-  {
-    id: 'doc-4',
-    title: 'Affidavit of Identity',
-    description: 'Sworn statement confirming your identity and ownership',
-    status: 'pending',
-    priority: 4,
-    requiresNotary: true,
-    aiPopulated: false,
-  },
-  {
-    id: 'doc-5',
-    title: 'Contingency Fee Agreement',
-    description: 'Our service agreement outlining fees upon successful recovery',
-    status: 'completed',
-    priority: 5,
-    requiresNotary: false,
-    aiPopulated: true,
-    signedAt: '2024-01-20T10:30:00Z',
-  },
-  {
-    id: 'doc-6',
-    title: 'W-9 Tax Form',
-    description: 'Required for IRS reporting of recovered funds',
-    status: 'ready_to_sign',
-    priority: 6,
-    requiresNotary: false,
-    aiPopulated: true,
-  },
-]
 
 type TabType = 'overview' | 'questionnaire' | 'documents' | 'notary' | 'help'
 
@@ -103,7 +46,7 @@ export function UnifiedDashboard() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>('overview')
-  const [documents, setDocuments] = useState<Document[]>([])
+  const [caseDocuments, setCaseDocuments] = useState<CaseDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -116,24 +59,38 @@ export function UnifiedDashboard() {
   }, [searchParams])
 
   useEffect(() => {
-    // Simulate loading documents
-    setTimeout(() => {
-      setDocuments(MOCK_DOCUMENTS.sort((a, b) => a.priority - b.priority))
+    loadCaseDocuments()
+  }, [user])
+
+  const loadCaseDocuments = async () => {
+    if (!user) {
       setIsLoading(false)
-    }, 500)
-  }, [])
+      return
+    }
+    try {
+      const res = await fetch(`/api/documents?clerk_user_id=${user.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCaseDocuments(data.documents || [])
+      }
+    } catch {
+      // Silent fail - overview will show zeros
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
     setSidebarOpen(false)
   }
 
-  const pendingCount = documents.filter(d => d.status !== 'completed').length
-  const completedCount = documents.filter(d => d.status === 'completed').length
-  const needsNotaryCount = documents.filter(d => d.requiresNotary && d.status !== 'completed').length
+  const pendingCount = caseDocuments.filter(d => d.status === 'pending').length
+  const completedCount = caseDocuments.filter(d => d.status === 'signed' || d.status === 'printed').length
+  const needsNotaryCount = caseDocuments.filter(d => d.requires_notary && !d.notarized_at && d.status !== 'pending').length
 
-  // Calculate questionnaire progress (mock - in production, fetch from API)
-  const questionnaireProgress = 45 // percentage
+  // Calculate questionnaire progress from case documents
+  const questionnaireProgress = caseDocuments.length > 0 ? 100 : 0
 
   if (!isLoaded || isLoading) {
     return (
@@ -158,7 +115,7 @@ export function UnifiedDashboard() {
         return <HelpTab />
       default:
         return <OverviewTab
-          documents={documents}
+          documents={caseDocuments}
           pendingCount={pendingCount}
           completedCount={completedCount}
           needsNotaryCount={needsNotaryCount}
@@ -364,7 +321,7 @@ function OverviewTab({
   setActiveTab,
   router
 }: {
-  documents: Document[]
+  documents: CaseDocument[]
   pendingCount: number
   completedCount: number
   needsNotaryCount: number
@@ -509,37 +466,39 @@ function OverviewTab({
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h3 className="font-semibold text-usfr-dark mb-4">Priority Documents</h3>
           <div className="space-y-3">
-            {documents
-              .filter(d => d.status !== 'completed')
-              .slice(0, 3)
-              .map(doc => (
-                <div
-                  key={doc.id}
-                  onClick={() => router.push(`/dashboard/sign/${doc.id}`)}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    doc.status === 'ready_to_sign' ? 'bg-green-100' :
-                    doc.requiresNotary ? 'bg-purple-100' : 'bg-yellow-100'
-                  }`}>
-                    {doc.requiresNotary ? (
-                      <Stamp className="w-4 h-4 text-purple-600" />
-                    ) : doc.status === 'ready_to_sign' ? (
-                      <PenTool className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <Clock className="w-4 h-4 text-yellow-600" />
-                    )}
+            {documents.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">
+                Complete the questionnaire to generate your document package.
+              </p>
+            ) : (
+              documents
+                .filter(d => d.status === 'pending')
+                .slice(0, 3)
+                .map(doc => (
+                  <div
+                    key={doc.id}
+                    onClick={() => router.push(`/dashboard/sign/${doc.id}`)}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      doc.requires_notary ? 'bg-purple-100' : 'bg-green-100'
+                    }`}>
+                      {doc.requires_notary ? (
+                        <Stamp className="w-4 h-4 text-purple-600" />
+                      ) : (
+                        <PenTool className="w-4 h-4 text-green-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">{doc.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {doc.requires_notary ? 'Requires notary' : 'Ready to sign'}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm truncate">{doc.title}</p>
-                    <p className="text-xs text-gray-500">
-                      {doc.status === 'ready_to_sign' ? 'Ready to sign' :
-                       doc.requiresNotary ? 'Requires notary' : 'Preparing'}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              ))}
+                ))
+            )}
           </div>
         </div>
       </div>
