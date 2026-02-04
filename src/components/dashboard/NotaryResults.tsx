@@ -1,6 +1,7 @@
 'use client'
 
-import { Star, Phone, MapPin, ExternalLink, Loader2, Globe, MessageCircle } from 'lucide-react'
+import { Star, Phone, MapPin, ExternalLink, Loader2, Globe, Clock, CreditCard, Award, Briefcase } from 'lucide-react'
+import { useState } from 'react'
 
 export interface Notary {
   id: string
@@ -20,6 +21,14 @@ export interface Notary {
   image_url: string | null
   is_mobile: boolean
   price_range: string | null
+  years_in_business: number | null
+  description: string | null
+  services: string[] | null
+  hours_of_operation: string | null
+  payment_methods: string[] | null
+  photos: string[] | null
+  accreditations: string[] | null
+  neighborhoods: string[] | null
 }
 
 interface NotaryResultsProps {
@@ -62,6 +71,8 @@ function StarRating({ rating, reviewCount }: { rating: number; reviewCount: numb
 }
 
 export function NotaryCard({ notary }: { notary: Notary }) {
+  const [expanded, setExpanded] = useState(false)
+
   const phoneFormatted = notary.phone
     ? notary.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')
     : null
@@ -72,7 +83,7 @@ export function NotaryCard({ notary }: { notary: Notary }) {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-200 flex flex-col h-full">
-      {/* Image Section - Prominent like Fiverr */}
+      {/* Image Section */}
       <div className="relative w-full h-48 bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center overflow-hidden">
         {notary.image_url ? (
           <img
@@ -89,7 +100,16 @@ export function NotaryCard({ notary }: { notary: Notary }) {
           <MapPin className="w-16 h-16 text-indigo-300" />
         )}
 
-        {/* Mobile Service Badge - Positioned on image */}
+        {/* Badges on image */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          {notary.years_in_business !== null && notary.years_in_business > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full shadow-lg">
+              <Award className="w-3 h-3" />
+              {notary.years_in_business}+ yrs
+            </span>
+          )}
+        </div>
+
         {notary.is_mobile && (
           <div className="absolute top-3 right-3">
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full shadow-lg">
@@ -115,15 +135,40 @@ export function NotaryCard({ notary }: { notary: Notary }) {
 
         {/* Location */}
         {location && (
-          <div className="flex items-start gap-2 mb-3 text-gray-600">
+          <div className="flex items-start gap-2 mb-2 text-gray-600">
             <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <span className="text-sm line-clamp-1">{location}</span>
           </div>
         )}
 
+        {/* Hours */}
+        {notary.hours_of_operation && (
+          <div className="flex items-start gap-2 mb-2 text-gray-600">
+            <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span className="text-xs line-clamp-1">{notary.hours_of_operation}</span>
+          </div>
+        )}
+
+        {/* Description */}
+        {notary.description && (
+          <div className="mb-3">
+            <p className={`text-sm text-gray-600 ${expanded ? '' : 'line-clamp-2'}`}>
+              {notary.description}
+            </p>
+            {notary.description.length > 120 && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="text-xs text-blue-600 hover:text-blue-700 mt-1 font-medium"
+              >
+                {expanded ? 'Show less' : 'Read more'}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Categories */}
         {notary.categories && notary.categories.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
+          <div className="flex flex-wrap gap-1.5 mb-2">
             {notary.categories.slice(0, 3).map((cat) => (
               <span
                 key={cat}
@@ -135,10 +180,49 @@ export function NotaryCard({ notary }: { notary: Notary }) {
           </div>
         )}
 
-        {/* Spacer to push contact section to bottom */}
+        {/* Services */}
+        {notary.services && notary.services.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {notary.services.slice(0, 4).map((svc) => (
+              <span
+                key={svc}
+                className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded font-medium"
+              >
+                {svc}
+              </span>
+            ))}
+            {notary.services.length > 4 && (
+              <span className="text-xs px-2 py-0.5 text-gray-500">
+                +{notary.services.length - 4} more
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Payment Methods */}
+        {notary.payment_methods && notary.payment_methods.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-3 text-gray-500">
+            <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="text-xs truncate">
+              {notary.payment_methods.join(', ')}
+            </span>
+          </div>
+        )}
+
+        {/* Accreditations */}
+        {notary.accreditations && notary.accreditations.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-3 text-gray-500">
+            <Award className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+            <span className="text-xs truncate">
+              {notary.accreditations.join(', ')}
+            </span>
+          </div>
+        )}
+
+        {/* Spacer */}
         <div className="flex-1"></div>
 
-        {/* Phone Number - Prominent */}
+        {/* Phone Number */}
         {phoneFormatted && (
           <a
             href={`tel:${notary.phone}`}
