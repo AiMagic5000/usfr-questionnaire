@@ -119,6 +119,20 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     group: 'authorization',
     description: 'Duplicate copy of the assignment of rights agreement',
   },
+  {
+    id: 'cd-17',
+    title: 'Additional Info About Foreclosures',
+    filename: 'additional-info-about-foreclosures.docx',
+    group: 'administrative',
+    description: 'Supplemental information and guidance about the foreclosure recovery process',
+  },
+  {
+    id: 'cd-18',
+    title: 'Letter / Mail to Client',
+    filename: 'letter-mail-to-client.docx',
+    group: 'administrative',
+    description: 'Standard correspondence letter template for client communication',
+  },
 ]
 
 export const DOCUMENT_GROUPS = {
