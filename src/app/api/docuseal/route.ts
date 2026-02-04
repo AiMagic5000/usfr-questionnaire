@@ -5,7 +5,6 @@ import {
   getSubmission,
   listTemplates,
   getTemplate,
-  createTemplateFromUrl,
 } from '@/lib/docuseal'
 
 /**
@@ -134,61 +133,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get or create DocuSeal template
-    let docusealTemplateId = doc.docuseal_template_id
-
-    if (!docusealTemplateId) {
-      // Check if we already have a DocuSeal template for this document template
-      if (doc.template_id) {
-        const { data: tmpl } = await supabase
-          .from('document_templates')
-          .select('docuseal_template_id, file_url, name')
-          .eq('id', doc.template_id)
-          .single()
-
-        if (tmpl?.docuseal_template_id) {
-          docusealTemplateId = tmpl.docuseal_template_id
-        } else if (tmpl?.file_url) {
-          // Create DocuSeal template from the DOCX file
-          const docUrl = tmpl.file_url.startsWith('http')
-            ? tmpl.file_url
-            : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://usfr.vercel.app'}${tmpl.file_url}`
-
-          const dsTemplate = await createTemplateFromUrl(
-            tmpl.name || doc.title,
-            docUrl,
-            doc.template_id
-          )
-
-          docusealTemplateId = dsTemplate.id
-
-          // Store the DocuSeal template ID on our template record
-          await supabase
-            .from('document_templates')
-            .update({ docuseal_template_id: dsTemplate.id })
-            .eq('id', doc.template_id)
-        }
-      }
-
-      // If still no template, try creating from the document's own file_url
-      if (!docusealTemplateId && doc.file_url) {
-        const fileUrl = doc.file_url.startsWith('http')
-          ? doc.file_url
-          : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://usfr.vercel.app'}${doc.file_url}`
-
-        const dsTemplate = await createTemplateFromUrl(
-          doc.title,
-          fileUrl,
-          `doc-${document_id}`
-        )
-        docusealTemplateId = dsTemplate.id
-      }
-    }
+    // Use the pre-existing DocuSeal template ID stored on the document record.
+    // Templates were pre-created via Rails console (IDs 1-16).
+    const docusealTemplateId = doc.docuseal_template_id
 
     if (!docusealTemplateId) {
       return NextResponse.json(
-        { error: 'Could not create or find a DocuSeal template for this document' },
-        { status: 500 }
+        { error: 'This document does not have a DocuSeal template configured. Please select a document from the Contract Library.' },
+        { status: 400 }
       )
     }
 

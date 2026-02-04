@@ -137,7 +137,7 @@ export function UnifiedDashboard() {
       case 'notary': return 'Find Notary'
       case 'notary-map': return 'Notary Map'
       case 'help': return 'Help & Support'
-      default: return 'Overview'
+      default: return 'Recovery Processing Center'
     }
   }
 

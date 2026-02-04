@@ -124,20 +124,38 @@ export async function getTemplate(id: number): Promise<DocuSealTemplate> {
 }
 
 /**
- * Create a template from a DOCX file URL.
- * DocuSeal will download the file and create a template from it.
+ * Create a template by downloading a DOCX file and uploading as base64.
+ * Works with self-hosted DocuSeal (free edition) which doesn't support URL-based creation.
  */
 export async function createTemplateFromUrl(
   name: string,
   documentUrl: string,
   externalId?: string
 ): Promise<DocuSealTemplate> {
-  return docusealFetch('/templates/docx', {
+  // Download the file first
+  const fileRes = await fetch(documentUrl)
+  if (!fileRes.ok) {
+    throw new Error(`Failed to download document from ${documentUrl}: ${fileRes.status}`)
+  }
+
+  const arrayBuffer = await fileRes.arrayBuffer()
+  const base64 = Buffer.from(arrayBuffer).toString('base64')
+
+  // Extract filename from URL
+  const urlParts = documentUrl.split('/')
+  const fileName = urlParts[urlParts.length - 1] || 'document.docx'
+
+  return docusealFetch('/templates', {
     method: 'POST',
     body: {
       name,
-      documents: [{ url: documentUrl }],
       external_id: externalId || undefined,
+      documents: [
+        {
+          name: fileName,
+          file: base64,
+        },
+      ],
     },
   })
 }

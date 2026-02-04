@@ -66,26 +66,32 @@ export function ContractLibrary() {
     setShowPinModal(false)
   }
 
+  const prepareDocument = async (doc: ContractDocument) => {
+    const res = await fetch('/api/documents/prepare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        template_id: doc.id,
+        title: doc.title,
+        filename: doc.filename,
+        description: doc.description,
+        group: doc.group,
+        clerk_user_id: user?.id || undefined,
+        docuseal_template_id: doc.docusealTemplateId || undefined,
+      }),
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to prepare document')
+    }
+
+    return res.json()
+  }
+
   const handleSign = async (doc: ContractDocument) => {
     setPreparingDoc(doc.id)
     try {
-      const res = await fetch('/api/documents/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          template_id: doc.id,
-          title: doc.title,
-          filename: doc.filename,
-          description: doc.description,
-          group: doc.group,
-        }),
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to prepare document')
-      }
-
-      const data = await res.json()
+      const data = await prepareDocument(doc)
       router.push(`/dashboard/sign/${data.document_id}`)
     } catch {
       alert('Failed to prepare document for signing. Please try again.')
@@ -102,29 +108,15 @@ export function ContractLibrary() {
   }
 
   const handlePrint = (doc: ContractDocument) => {
-    // Open document in new tab for printing
-    window.open(`/documents/${doc.filename}`, '_blank')
+    const siteUrl = window.location.origin
+    const docUrl = encodeURIComponent(`${siteUrl}/documents/${doc.filename}`)
+    window.open(`https://docs.google.com/gview?url=${docUrl}&embedded=true`, '_blank')
   }
 
   const handleEdit = async (doc: ContractDocument) => {
-    // Create document record and navigate to signing view where fields can be edited
     setPreparingDoc(doc.id)
     try {
-      const res = await fetch('/api/documents/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          template_id: doc.id,
-          title: doc.title,
-          filename: doc.filename,
-          description: doc.description,
-          group: doc.group,
-        }),
-      })
-
-      if (!res.ok) throw new Error('Failed to prepare document')
-
-      const data = await res.json()
+      const data = await prepareDocument(doc)
       router.push(`/dashboard/sign/${data.document_id}?mode=edit`)
     } catch {
       alert('Failed to prepare document. Please try again.')
