@@ -73,6 +73,7 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
   const [error, setError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
   const [showEmbeddedSigning, setShowEmbeddedSigning] = useState(false)
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false)
 
   // Client info for signing
   const [clientEmail, setClientEmail] = useState('')
@@ -169,6 +170,9 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
           signed_documents: [],
         })
       }
+
+      setShowSuccessBanner(true)
+      setTimeout(() => setShowSuccessBanner(false), 8000)
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Failed to send for signing')
     } finally {
@@ -308,6 +312,29 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Success Banner */}
+        {showSuccessBanner && (
+          <div className="bg-green-50 border border-green-300 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-green-900">Signing Request Sent Successfully</p>
+              <p className="text-sm text-green-700 mt-1">
+                An email with the secure signing link has been sent to <strong>{clientEmail}</strong>.
+                The client can review and sign the document electronically.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSuccessBanner(false)}
+              className="text-green-400 hover:text-green-600 p-1"
+            >
+              <span className="sr-only">Dismiss</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Document Info Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-start gap-4">

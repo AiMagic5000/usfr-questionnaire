@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the pre-existing DocuSeal template ID stored on the document record.
-    // Templates were pre-created via Rails console (IDs 1-16).
+    // Templates were created via Rails console from PDFs (IDs 17-32).
     const docusealTemplateId = doc.docuseal_template_id
 
     if (!docusealTemplateId) {
@@ -179,8 +179,8 @@ export async function POST(request: NextRequest) {
         fields: prefilledFields.length > 0 ? prefilledFields : undefined,
       }],
       message: {
-        subject: `Please sign: ${doc.title}`,
-        body: `Hello ${recipientName || 'Client'},\n\nPlease review and sign the attached document "${doc.title}" for your foreclosure surplus recovery case.\n\nThis is a secure document that requires your electronic signature.`,
+        subject: `Action Required: ${doc.title} - US Foreclosure Recovery`,
+        body: `Dear ${recipientName || 'Valued Client'},\n\nThank you for choosing US Foreclosure Recovery to assist with your surplus recovery case.\n\nPlease review and sign the attached document "${doc.title}" at your earliest convenience. This is a secure document that requires your electronic signature to proceed with your case.\n\nIf you have any questions about this document, please contact our office directly.\n\nBest regards,\nUS Foreclosure Recovery\nclaim@usforeclosurerecovery.com`,
       },
     })
 
