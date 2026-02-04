@@ -1,6 +1,6 @@
 'use client'
 
-import { Star, Phone, MapPin, ExternalLink, Loader2 } from 'lucide-react'
+import { Star, Phone, MapPin, ExternalLink, Loader2, Globe, MessageCircle } from 'lucide-react'
 
 export interface Notary {
   id: string
@@ -29,7 +29,7 @@ interface NotaryResultsProps {
   selectedState: string | null
 }
 
-function StarRating({ rating }: { rating: number }) {
+function StarRating({ rating, reviewCount }: { rating: number; reviewCount: number }) {
   const stars = []
   const fullStars = Math.floor(rating)
   const hasHalf = rating % 1 >= 0.5
@@ -45,111 +45,133 @@ function StarRating({ rating }: { rating: number }) {
       )
     } else {
       stars.push(
-        <Star key={i} className="w-4 h-4 text-slate-600" />
+        <Star key={i} className="w-4 h-4 text-gray-300" />
       )
     }
   }
 
-  return <div className="flex items-center gap-0.5">{stars}</div>
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-0.5">{stars}</div>
+      <span className="text-sm font-semibold text-yellow-600">
+        {rating.toFixed(1)}
+      </span>
+      <span className="text-sm text-gray-500">({reviewCount})</span>
+    </div>
+  )
 }
 
-function NotaryCard({ notary }: { notary: Notary }) {
+export function NotaryCard({ notary }: { notary: Notary }) {
   const phoneFormatted = notary.phone
     ? notary.phone.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')
     : null
 
+  const location = [notary.city, notary.state_abbr, notary.zip_code]
+    .filter(Boolean)
+    .join(', ')
+
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-400/20 transition-all">
-      <div className="flex gap-4">
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-200 flex flex-col h-full">
+      {/* Image Section - Prominent like Fiverr */}
+      <div className="relative w-full h-48 bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center overflow-hidden">
         {notary.image_url ? (
           <img
             src={notary.image_url}
             alt={notary.business_name}
-            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+            className="w-full h-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none'
+              const target = e.target as HTMLImageElement
+              target.style.display = 'none'
+              target.parentElement?.classList.add('flex', 'items-center', 'justify-center')
             }}
           />
         ) : (
-          <div className="w-16 h-16 rounded-lg bg-slate-700 flex items-center justify-center flex-shrink-0">
-            <MapPin className="w-6 h-6 text-slate-500" />
+          <MapPin className="w-16 h-16 text-indigo-300" />
+        )}
+
+        {/* Mobile Service Badge - Positioned on image */}
+        {notary.is_mobile && (
+          <div className="absolute top-3 right-3">
+            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-full shadow-lg">
+              Mobile Service
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Content Section */}
+      <div className="p-4 flex flex-col flex-1">
+        {/* Business Name */}
+        <h3 className="font-bold text-gray-900 text-lg mb-2 line-clamp-2 min-h-[3.5rem]">
+          {notary.business_name}
+        </h3>
+
+        {/* Star Rating */}
+        {notary.rating !== null && (
+          <div className="mb-3">
+            <StarRating rating={notary.rating} reviewCount={notary.review_count} />
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-slate-100 text-sm truncate">
-            {notary.business_name}
-          </h4>
-
-          {notary.rating !== null && (
-            <div className="flex items-center gap-2 mt-1">
-              <StarRating rating={notary.rating} />
-              <span className="text-xs text-slate-400">
-                {notary.rating.toFixed(1)} ({notary.review_count} reviews)
-              </span>
-            </div>
-          )}
-
-          {notary.categories && notary.categories.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {notary.categories.slice(0, 3).map((cat) => (
-                <span
-                  key={cat}
-                  className="text-xs px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded"
-                >
-                  {cat}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {notary.address && (
-            <p className="text-xs text-slate-400 mt-1.5 truncate">
-              <MapPin className="w-3 h-3 inline mr-1" />
-              {notary.address}
-              {notary.city ? `, ${notary.city}` : ''}
-              {notary.state_abbr ? `, ${notary.state_abbr}` : ''}
-            </p>
-          )}
-
-          <div className="flex items-center gap-3 mt-2">
-            {phoneFormatted && (
-              <a
-                href={`tel:${notary.phone}`}
-                className="flex items-center gap-1 text-xs text-cyan-400 font-medium hover:underline"
-              >
-                <Phone className="w-3 h-3" />
-                {phoneFormatted}
-              </a>
-            )}
-            {notary.yelp_url && (
-              <a
-                href={notary.yelp_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-red-400 hover:underline"
-              >
-                <ExternalLink className="w-3 h-3" />
-                Yelp
-              </a>
-            )}
-            {notary.website_url && (
-              <a
-                href={notary.website_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-slate-400 hover:underline"
-              >
-                <ExternalLink className="w-3 h-3" />
-                Website
-              </a>
-            )}
+        {/* Location */}
+        {location && (
+          <div className="flex items-start gap-2 mb-3 text-gray-600">
+            <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span className="text-sm line-clamp-1">{location}</span>
           </div>
+        )}
 
-          {notary.is_mobile && (
-            <span className="inline-block mt-1.5 text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-medium">
-              Mobile Service Available
-            </span>
+        {/* Categories */}
+        {notary.categories && notary.categories.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {notary.categories.slice(0, 3).map((cat) => (
+              <span
+                key={cat}
+                className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full font-medium"
+              >
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Spacer to push contact section to bottom */}
+        <div className="flex-1"></div>
+
+        {/* Phone Number - Prominent */}
+        {phoneFormatted && (
+          <a
+            href={`tel:${notary.phone}`}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            <Phone className="w-4 h-4" />
+            {phoneFormatted}
+          </a>
+        )}
+
+        {/* Links Row */}
+        <div className="flex items-center justify-center gap-4 pt-3 border-t border-gray-100">
+          {notary.yelp_url && (
+            <a
+              href={notary.yelp_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              YellowPages
+            </a>
+          )}
+          {notary.website_url && (
+            <a
+              href={notary.website_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            >
+              <Globe className="w-4 h-4" />
+              Website
+            </a>
           )}
         </div>
       </div>
@@ -159,15 +181,17 @@ function NotaryCard({ notary }: { notary: Notary }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-slate-800 rounded-xl border border-slate-700 p-4 animate-pulse">
-          <div className="flex gap-4">
-            <div className="w-16 h-16 rounded-lg bg-slate-700 flex-shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-slate-700 rounded w-3/4" />
-              <div className="h-3 bg-slate-700 rounded w-1/2" />
-              <div className="h-3 bg-slate-700 rounded w-2/3" />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
+          <div className="w-full h-48 bg-gray-200" />
+          <div className="p-4 space-y-3">
+            <div className="h-6 bg-gray-200 rounded w-3/4" />
+            <div className="h-4 bg-gray-200 rounded w-1/2" />
+            <div className="h-4 bg-gray-200 rounded w-2/3" />
+            <div className="flex gap-2 mt-4">
+              <div className="h-6 bg-gray-200 rounded-full w-20" />
+              <div className="h-6 bg-gray-200 rounded-full w-24" />
             </div>
           </div>
         </div>
@@ -185,9 +209,9 @@ export function NotaryResults({
   if (isLoading) {
     return (
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
-          <span className="text-sm text-slate-300">
+        <div className="flex items-center gap-2 mb-6">
+          <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+          <span className="text-sm text-gray-600 font-medium">
             Loading notaries in {selectedCounty}, {selectedState}...
           </span>
         </div>
@@ -198,12 +222,14 @@ export function NotaryResults({
 
   if (!selectedCounty) {
     return (
-      <div className="text-center py-12">
-        <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-slate-300 mb-2">
+      <div className="text-center py-16 px-4">
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full mb-6">
+          <MapPin className="w-10 h-10 text-indigo-400" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-3">
           Select a County
         </h3>
-        <p className="text-sm text-slate-400 max-w-sm mx-auto">
+        <p className="text-gray-600 max-w-md mx-auto">
           Click on a county on the map or use the search to find mobile notaries in your area.
         </p>
       </div>
@@ -212,12 +238,14 @@ export function NotaryResults({
 
   if (notaries.length === 0) {
     return (
-      <div className="text-center py-12">
-        <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-slate-300 mb-2">
+      <div className="text-center py-16 px-4">
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-full mb-6">
+          <MapPin className="w-10 h-10 text-gray-400" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-3">
           No Notaries Found
         </h3>
-        <p className="text-sm text-slate-400 max-w-sm mx-auto">
+        <p className="text-gray-600 max-w-md mx-auto">
           We don't have notary data for {selectedCounty} County, {selectedState} yet.
           Try a nearby county or call us for assistance.
         </p>
@@ -227,15 +255,20 @@ export function NotaryResults({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-slate-100">
-          {selectedCounty} County, {selectedState}
-        </h3>
-        <span className="text-sm text-slate-400">
-          {notaries.length} notar{notaries.length === 1 ? 'y' : 'ies'} found
-        </span>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {selectedCounty} County, {selectedState}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {notaries.length} notar{notaries.length === 1 ? 'y' : 'ies'} available
+          </p>
+        </div>
       </div>
-      <div className="space-y-3">
+
+      {/* Grid Layout - Fiverr Style */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {notaries.map((notary) => (
           <NotaryCard key={notary.id} notary={notary} />
         ))}

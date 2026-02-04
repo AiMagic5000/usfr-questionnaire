@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Search, RotateCcw, Download, Loader2, X, Phone, MapPin, Star, ExternalLink } from 'lucide-react'
+import { Search, RotateCcw, Download, Loader2, X, Phone, MapPin, Star, ExternalLink, Plus, Minus } from 'lucide-react'
 
 interface CountyMapProps {
   onCountySelect: (countyName: string, stateAbbr: string) => void
@@ -90,7 +90,7 @@ function StarRating({ rating }: { rating: number }) {
     } else if (i === fullStars && hasHalf) {
       stars.push(<Star key={i} className="w-3 h-3 fill-yellow-400/50 text-yellow-400" />)
     } else {
-      stars.push(<Star key={i} className="w-3 h-3 text-slate-600" />)
+      stars.push(<Star key={i} className="w-3 h-3 text-gray-400" />)
     }
   }
 
@@ -103,7 +103,7 @@ function NotaryCard({ notary }: { notary: Notary }) {
     : null
 
   return (
-    <div className="bg-slate-700 rounded-lg p-3 hover:bg-slate-600 transition-all">
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition-all">
       <div className="flex gap-3">
         {notary.image_url ? (
           <img
@@ -115,20 +115,20 @@ function NotaryCard({ notary }: { notary: Notary }) {
             }}
           />
         ) : (
-          <div className="w-12 h-12 rounded-lg bg-slate-600 flex items-center justify-center flex-shrink-0">
-            <MapPin className="w-5 h-5 text-slate-400" />
+          <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-5 h-5 text-gray-500" />
           </div>
         )}
 
         <div className="flex-1 min-w-0">
-          <h5 className="font-semibold text-slate-100 text-sm truncate">
+          <h5 className="font-semibold text-gray-900 text-sm truncate">
             {notary.business_name}
           </h5>
 
           {notary.rating !== null && (
             <div className="flex items-center gap-2 mt-1">
               <StarRating rating={notary.rating} />
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-gray-600">
                 {notary.rating.toFixed(1)} ({notary.review_count})
               </span>
             </div>
@@ -137,7 +137,7 @@ function NotaryCard({ notary }: { notary: Notary }) {
           {phoneFormatted && (
             <a
               href={`tel:${notary.phone}`}
-              className="flex items-center gap-1 text-xs text-cyan-400 font-medium hover:underline mt-1"
+              className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:underline mt-1"
             >
               <Phone className="w-3 h-3" />
               {phoneFormatted}
@@ -150,7 +150,7 @@ function NotaryCard({ notary }: { notary: Notary }) {
                 href={notary.yelp_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-red-400 hover:underline"
+                className="text-xs text-red-600 hover:underline"
               >
                 Yelp
               </a>
@@ -160,7 +160,7 @@ function NotaryCard({ notary }: { notary: Notary }) {
                 href={notary.website_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-slate-400 hover:underline"
+                className="text-xs text-gray-600 hover:underline"
               >
                 Website
               </a>
@@ -168,7 +168,7 @@ function NotaryCard({ notary }: { notary: Notary }) {
           </div>
 
           {notary.is_mobile && (
-            <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-medium">
+            <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
               Mobile
             </span>
           )}
@@ -269,9 +269,9 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
             const fips = String(feature.id || '').padStart(5, '0')
             const stateFips = fips.substring(0, 2)
             const stateAbbr = STATE_FIPS_TO_ABBR[stateFips]
-            return colorMap[stateAbbr] || '#334155'
+            return colorMap[stateAbbr] || '#9ca3af'
           })
-          .attr('stroke', '#0f172a')
+          .attr('stroke', '#d1d5db')
           .attr('stroke-width', 0.5)
           .attr('data-fips', (d: unknown) => (d as GeoJSON.Feature).id || '')
           .style('cursor', 'pointer')
@@ -297,7 +297,7 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
 
             if (countyName && stateAbbr) {
               // Clear previous selection
-              g.selectAll('.county').classed('selected', false).attr('stroke-width', 0.5).attr('stroke', '#0f172a')
+              g.selectAll('.county').classed('selected', false).attr('stroke-width', 0.5).attr('stroke', '#d1d5db')
 
               // Mark as selected
               d3.select(this)
@@ -329,7 +329,7 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
           .attr('class', 'state-border')
           .attr('d', d3.geoPath() as unknown as string)
           .attr('fill', 'none')
-          .attr('stroke', '#0f172a')
+          .attr('stroke', '#6b7280')
           .attr('stroke-width', 2)
           .style('pointer-events', 'none')
 
@@ -447,7 +447,29 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
 
     // Clear selection
     if (countyPathsRef.current) {
-      countyPathsRef.current.classed('selected', false).attr('stroke-width', 0.5).attr('stroke', '#0f172a')
+      countyPathsRef.current.classed('selected', false).attr('stroke-width', 0.5).attr('stroke', '#d1d5db')
+    }
+  }
+
+  // Zoom in
+  const handleZoomIn = () => {
+    if (!svgRef.current || !d3Ref.current) return
+    const d3 = d3Ref.current
+    const svg = d3.select(svgRef.current)
+    const zoom = (svgRef.current as SVGSVGElement & { __zoom?: ReturnType<typeof d3.zoom> }).__zoom
+    if (zoom) {
+      svg.transition().duration(300).call(zoom.scaleBy as never, 1.5)
+    }
+  }
+
+  // Zoom out
+  const handleZoomOut = () => {
+    if (!svgRef.current || !d3Ref.current) return
+    const d3 = d3Ref.current
+    const svg = d3.select(svgRef.current)
+    const zoom = (svgRef.current as SVGSVGElement & { __zoom?: ReturnType<typeof d3.zoom> }).__zoom
+    if (zoom) {
+      svg.transition().duration(300).call(zoom.scaleBy as never, 0.67)
     }
   }
 
@@ -477,25 +499,25 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
         {/* Search + Controls */}
         <div className="mb-5 flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search county name..."
-              className="w-full pl-9 pr-4 py-3 border-2 border-slate-600 bg-slate-700 text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-cyan-400/20 focus:border-cyan-400 placeholder:text-slate-400"
+              className="w-full pl-9 pr-4 py-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder:text-gray-500"
             />
           </div>
           <button
             onClick={handleReset}
-            className="px-5 py-3 bg-gradient-to-br from-slate-700 to-slate-600 text-slate-100 rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-slate-900/30 transition-all flex items-center gap-2"
+            className="px-5 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 hover:shadow-md transition-all flex items-center gap-2"
           >
             <RotateCcw className="w-4 h-4" />
             Reset View
           </button>
           <button
             onClick={handleExport}
-            className="px-5 py-3 bg-gradient-to-br from-slate-700 to-slate-600 text-slate-100 rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-slate-900/30 transition-all flex items-center gap-2"
+            className="px-5 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 hover:shadow-md transition-all flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Export Data
@@ -505,25 +527,45 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
         {/* Map Container */}
         <div
           ref={containerRef}
-          className="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700"
+          className="relative bg-gray-50 rounded-xl overflow-hidden shadow-lg border border-gray-200"
           style={{ minHeight: 500 }}
         >
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-800 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
               <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-cyan-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">Loading county map...</p>
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Loading county map...</p>
               </div>
             </div>
           )}
           <svg ref={svgRef} className="w-full" style={{ display: isLoading ? 'none' : 'block' }} />
+
+          {/* Zoom Controls */}
+          {!isLoading && (
+            <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
+              <button
+                onClick={handleZoomIn}
+                className="w-10 h-10 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 hover:shadow-md transition-all flex items-center justify-center"
+                title="Zoom In"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleZoomOut}
+                className="w-10 h-10 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 hover:shadow-md transition-all flex items-center justify-center"
+                title="Zoom Out"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Popup */}
         {popupData?.visible && (
           <div
             ref={popupRef}
-            className="fixed bg-slate-800 border-2 border-cyan-400 rounded-xl p-5 shadow-2xl z-50 min-w-[350px] max-w-[450px] animate-in fade-in slide-in-from-bottom-2 duration-300"
+            className="fixed bg-white border-2 border-blue-500 rounded-xl p-5 shadow-2xl z-50 min-w-[350px] max-w-[450px] animate-in fade-in slide-in-from-bottom-2 duration-300"
             style={{
               left: '50%',
               top: '50%',
@@ -532,38 +574,38 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
           >
             <button
               onClick={() => setPopupData(null)}
-              className="absolute top-3 right-3 w-7 h-7 bg-slate-700 rounded-md text-slate-300 hover:bg-cyan-400 hover:text-slate-900 transition-all flex items-center justify-center"
+              className="absolute top-3 right-3 w-7 h-7 bg-gray-100 rounded-md text-gray-600 hover:bg-blue-500 hover:text-white transition-all flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="mb-4 border-b-2 border-slate-700 pb-3">
-              <h3 className="text-xl font-bold text-cyan-400 mb-1">
+            <div className="mb-4 border-b-2 border-gray-200 pb-3">
+              <h3 className="text-xl font-bold text-blue-600 mb-1">
                 {popupData.county}
               </h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-gray-600">
                 {ABBR_TO_NAME[popupData.state]} ({popupData.state})
               </p>
             </div>
 
             <div className="mb-4">
-              <h4 className="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">
+              <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">
                 Information
               </h4>
-              <div className="text-sm text-slate-300">
+              <div className="text-sm text-gray-700">
                 <div>
-                  <strong className="text-slate-100">FIPS Code:</strong> {popupData.fips}
+                  <strong className="text-gray-900">FIPS Code:</strong> {popupData.fips}
                 </div>
               </div>
             </div>
 
             <div className="mb-4">
-              <h4 className="text-xs font-semibold text-cyan-400 uppercase tracking-wide mb-2">
+              <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">
                 Notaries ({notaries.length})
               </h4>
               {loadingNotaries ? (
                 <div className="text-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-cyan-400 mx-auto" />
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600 mx-auto" />
                 </div>
               ) : notaries.length > 0 ? (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -572,7 +614,7 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
                   ))}
                 </div>
               ) : (
-                <div className="bg-slate-700/50 border border-dashed border-slate-600 rounded-lg p-3 text-center text-sm text-slate-400">
+                <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-3 text-center text-sm text-gray-600">
                   No notaries found in this county
                 </div>
               )}
@@ -583,7 +625,7 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
                 href={`https://www.congress.gov/members?state=${popupData.state}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 px-3 py-2 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-cyan-400/30 transition-all text-center"
+                className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 hover:shadow-lg transition-all text-center"
               >
                 State Laws
               </a>
@@ -591,7 +633,7 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
                 href={`https://en.wikipedia.org/wiki/${popupData.county}_County,_${popupData.state}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 px-3 py-2 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-cyan-400/30 transition-all text-center"
+                className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 hover:shadow-lg transition-all text-center"
               >
                 More Info
               </a>
@@ -603,28 +645,28 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
       {/* Sidebar */}
       <div className="w-72 flex flex-col gap-5">
         {/* Foreclosure Type Legend */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 shadow-2xl border border-slate-700">
-          <h3 className="text-base font-semibold text-cyan-400 mb-3 uppercase tracking-wide">
+        <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
+          <h3 className="text-base font-semibold text-blue-600 mb-3 uppercase tracking-wide">
             Foreclosure Type
           </h3>
           <div className="space-y-3 mb-4">
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 rounded" style={{ backgroundColor: JUDICIAL_COLOR }} />
-              <span className="text-sm text-slate-200">Judicial ({JUDICIAL_STATES.size} states)</span>
+              <span className="text-sm text-gray-700">Judicial ({JUDICIAL_STATES.size} states)</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 rounded" style={{ backgroundColor: NON_JUDICIAL_COLOR }} />
-              <span className="text-sm text-slate-200">Non-Judicial ({NON_JUDICIAL_STATES.size} states)</span>
+              <span className="text-sm text-gray-700">Non-Judicial ({NON_JUDICIAL_STATES.size} states)</span>
             </div>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-gray-600 leading-relaxed">
             Judicial states require court proceedings for foreclosure. Non-judicial states allow power-of-sale foreclosure without court involvement.
           </p>
         </div>
 
         {/* State List */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 shadow-2xl border border-slate-700 max-h-[400px] overflow-y-auto">
-          <h3 className="text-base font-semibold text-cyan-400 mb-3 uppercase tracking-wide">
+        <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 max-h-[400px] overflow-y-auto">
+          <h3 className="text-base font-semibold text-blue-600 mb-3 uppercase tracking-wide">
             States
           </h3>
           <div className="space-y-1">
@@ -636,8 +678,8 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
                   onClick={() => toggleState(stateAbbr)}
                   className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer transition-all text-sm ${
                     filteredStates.has(stateAbbr)
-                      ? 'hover:bg-slate-700 text-slate-200'
-                      : 'text-slate-500'
+                      ? 'hover:bg-gray-100 text-gray-900'
+                      : 'text-gray-400'
                   }`}
                 >
                   <div
@@ -649,7 +691,7 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
                   <span>
                     {stateAbbr} - {ABBR_TO_NAME[stateAbbr]}
                   </span>
-                  <span className="ml-auto text-xs text-slate-500">
+                  <span className="ml-auto text-xs text-gray-500">
                     {JUDICIAL_STATES.has(stateAbbr) ? 'J' : 'NJ'}
                   </span>
                 </button>
@@ -658,22 +700,22 @@ export function CountyMap({ onCountySelect, selectedCounty, selectedState }: Cou
         </div>
 
         {/* Statistics */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-4 shadow-2xl border border-slate-700">
-          <h3 className="text-base font-semibold text-cyan-400 mb-3 uppercase tracking-wide">
+        <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
+          <h3 className="text-base font-semibold text-blue-600 mb-3 uppercase tracking-wide">
             Statistics
           </h3>
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-sm py-2 border-b border-slate-700">
-              <span className="text-slate-400">Total Counties:</span>
-              <span className="text-cyan-400 font-semibold">{totalCounties}</span>
+            <div className="flex justify-between items-center text-sm py-2 border-b border-gray-200">
+              <span className="text-gray-600">Total Counties:</span>
+              <span className="text-blue-600 font-semibold">{totalCounties}</span>
             </div>
-            <div className="flex justify-between items-center text-sm py-2 border-b border-slate-700">
-              <span className="text-slate-400">States:</span>
-              <span className="text-cyan-400 font-semibold">{filteredStates.size}</span>
+            <div className="flex justify-between items-center text-sm py-2 border-b border-gray-200">
+              <span className="text-gray-600">States:</span>
+              <span className="text-blue-600 font-semibold">{filteredStates.size}</span>
             </div>
             <div className="flex justify-between items-center text-sm py-2">
-              <span className="text-slate-400">Visible:</span>
-              <span className="text-cyan-400 font-semibold">{visibleCounties}</span>
+              <span className="text-gray-600">Visible:</span>
+              <span className="text-blue-600 font-semibold">{visibleCounties}</span>
             </div>
           </div>
         </div>
