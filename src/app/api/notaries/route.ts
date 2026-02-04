@@ -26,11 +26,37 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const limitParam = parseInt(searchParams.get('limit') || '20', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
+    const distinctCounties = searchParams.get('distinct_counties') === 'true'
 
     // Clamp limit between 1 and 50
     const limit = Math.min(Math.max(limitParam, 1), 50)
 
     const browse = searchParams.get('browse')
+
+    const supabase = createAgentsServerClient()
+
+    // If requesting distinct counties for a state, return just the county list
+    if (distinctCounties && state) {
+      const { data, error } = await supabase
+        .from('notaries')
+        .select('county_name')
+        .eq('state_abbr', state.toUpperCase())
+        .not('county_name', 'is', null)
+        .order('county_name', { ascending: true })
+
+      if (error) {
+        console.error('County query error:', error)
+        return NextResponse.json(
+          { error: 'Failed to fetch counties', details: error.message },
+          { status: 500 }
+        )
+      }
+
+      // Get unique county names
+      const countyNames = data?.map(d => d.county_name).filter(Boolean) || []
+      const uniqueCounties = Array.from(new Set(countyNames))
+      return NextResponse.json({ counties: uniqueCounties })
+    }
 
     // Allow browsing all top-rated notaries with ?browse=featured
     // Otherwise require state or search
@@ -40,8 +66,6 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    const supabase = createAgentsServerClient()
 
     // Start building query with count
     let query = supabase

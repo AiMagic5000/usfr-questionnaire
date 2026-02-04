@@ -24,6 +24,13 @@ interface NotarySelectorProps {
   selectedNotaryId?: string
 }
 
+// Manual notary entry when no results found
+interface ManualNotary {
+  business_name: string
+  phone: string
+  email: string
+}
+
 const US_STATES = [
   { abbr: 'AL', name: 'Alabama' }, { abbr: 'AK', name: 'Alaska' }, { abbr: 'AZ', name: 'Arizona' },
   { abbr: 'AR', name: 'Arkansas' }, { abbr: 'CA', name: 'California' }, { abbr: 'CO', name: 'Colorado' },
@@ -54,6 +61,8 @@ export function NotarySelector({ initialState, initialCounty, onSelect, selected
   const [isLoadingCounties, setIsLoadingCounties] = useState(false)
   const [selectedNotary, setSelectedNotary] = useState<Notary | null>(null)
   const [notaryEmail, setNotaryEmail] = useState('')
+  const [showManualEntry, setShowManualEntry] = useState(false)
+  const [manualNotary, setManualNotary] = useState<ManualNotary>({ business_name: '', phone: '', email: '' })
 
   // Fetch counties when state changes
   useEffect(() => {
@@ -204,6 +213,19 @@ export function NotarySelector({ initialState, initialCounty, onSelect, selected
         />
       </div>
 
+      {/* Manual entry link */}
+      {!showManualEntry && (
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => setShowManualEntry(true)}
+            className="text-sm text-usfr-primary hover:underline"
+          >
+            Can't find your notary? Enter details manually
+          </button>
+        </div>
+      )}
+
       {/* Results */}
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -260,7 +282,14 @@ export function NotarySelector({ initialState, initialCounty, onSelect, selected
         <div className="text-center py-6 bg-gray-50 rounded-lg">
           <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-gray-500">No notaries found in this area</p>
-          <p className="text-xs text-gray-400 mt-1">Try a different county or search term</p>
+          <p className="text-xs text-gray-400 mt-1">Try a different search or enter notary details manually</p>
+          <button
+            type="button"
+            onClick={() => setShowManualEntry(true)}
+            className="mt-3 px-4 py-2 text-sm font-medium text-usfr-primary border border-usfr-primary rounded-lg hover:bg-usfr-primary/5 transition-colors"
+          >
+            Enter Notary Manually
+          </button>
         </div>
       ) : (
         <div className="text-center py-6 bg-gray-50 rounded-lg">
@@ -270,7 +299,7 @@ export function NotarySelector({ initialState, initialCounty, onSelect, selected
       )}
 
       {/* Notary Email Input */}
-      {selectedNotary && (
+      {selectedNotary && !showManualEntry && (
         <div className="bg-usfr-secondary/5 border border-usfr-secondary/20 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
             <CheckCircle2 className="w-5 h-5 text-usfr-secondary" />
@@ -291,6 +320,94 @@ export function NotarySelector({ initialState, initialCounty, onSelect, selected
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">Enter the notary's email address to send them the signing request</p>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Notary Entry Form */}
+      {showManualEntry && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-gray-900">Enter Notary Details</h3>
+            <button
+              type="button"
+              onClick={() => {
+                setShowManualEntry(false)
+                setManualNotary({ business_name: '', phone: '', email: '' })
+              }}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notary Name / Business <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={manualNotary.business_name}
+                onChange={(e) => setManualNotary(prev => ({ ...prev, business_name: e.target.value }))}
+                placeholder="John Smith Notary Services"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notary Email <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="email"
+                  value={manualNotary.email}
+                  onChange={(e) => setManualNotary(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="notary@example.com"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone (optional)</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="tel"
+                  value={manualNotary.phone}
+                  onChange={(e) => setManualNotary(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="(555) 123-4567"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={!manualNotary.business_name.trim() || !manualNotary.email.includes('@')}
+              onClick={() => {
+                // Create a manual notary object and select it
+                const manual: Notary = {
+                  id: `manual-${Date.now()}`,
+                  business_name: manualNotary.business_name,
+                  phone: manualNotary.phone || null,
+                  address: null,
+                  city: null,
+                  county_name: county || 'N/A',
+                  state: null,
+                  state_abbr: state || 'N/A',
+                  zip_code: null,
+                  rating: null,
+                  review_count: 0,
+                }
+                setSelectedNotary(manual)
+                setNotaryEmail(manualNotary.email)
+                setShowManualEntry(false)
+              }}
+              className="w-full py-2.5 bg-usfr-primary text-white rounded-lg font-medium hover:bg-usfr-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CheckCircle2 className="w-4 h-4 inline mr-2" />
+              Use This Notary
+            </button>
           </div>
         </div>
       )}
