@@ -15,7 +15,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'assignment-of-rights-agreement.docx',
     group: 'authorization',
     description: 'Assigns recovery rights from client to agent',
-    docusealTemplateId: 1,
+    docusealTemplateId: 17,
     docusealExternalId: 'assignment-of-rights',
   },
   {
@@ -24,7 +24,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'fee-agreement-with-cost-cap.docx',
     group: 'agreements',
     description: 'Fee structure agreement with maximum cost limits',
-    docusealTemplateId: 2,
+    docusealTemplateId: 18,
     docusealExternalId: 'fee-agreement-cost-cap',
   },
   {
@@ -33,7 +33,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'contingent-fee-agreement.docx',
     group: 'agreements',
     description: 'Payment contingent on successful recovery',
-    docusealTemplateId: 3,
+    docusealTemplateId: 19,
     docusealExternalId: 'contingent-fee',
   },
   {
@@ -42,7 +42,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'letter-of-direction.docx',
     group: 'authorization',
     description: 'Client authorization directing actions on their behalf',
-    docusealTemplateId: 4,
+    docusealTemplateId: 20,
     docusealExternalId: 'letter-of-direction',
   },
   {
@@ -51,7 +51,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'limited-power-of-attorney.docx',
     group: 'authorization',
     description: 'Limited authority to act on behalf of the client',
-    docusealTemplateId: 5,
+    docusealTemplateId: 21,
     docusealExternalId: 'limited-poa',
   },
   {
@@ -60,7 +60,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'mobile-notary-agreement.docx',
     group: 'notary',
     description: 'Agreement for mobile notary services',
-    docusealTemplateId: 6,
+    docusealTemplateId: 22,
     docusealExternalId: 'mobile-notary',
   },
   {
@@ -69,7 +69,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'proposed-disbursement-for-client.docx',
     group: 'administrative',
     description: 'Proposed fund disbursement breakdown for client',
-    docusealTemplateId: 7,
+    docusealTemplateId: 23,
     docusealExternalId: 'proposed-disbursement',
   },
   {
@@ -78,7 +78,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'miscellaneous-notary-affidavits.docx',
     group: 'notary',
     description: 'Collection of standard notary affidavit forms',
-    docusealTemplateId: 8,
+    docusealTemplateId: 24,
     docusealExternalId: 'misc-notary-affidavits',
   },
   {
@@ -87,7 +87,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'affidavit-of-heirship.docx',
     group: 'notary',
     description: 'Sworn statement establishing heirship and rights',
-    docusealTemplateId: 9,
+    docusealTemplateId: 25,
     docusealExternalId: 'affidavit-heirship',
   },
   {
@@ -96,7 +96,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'agreement-partial-assignment-inheritance.docx',
     group: 'agreements',
     description: 'Agreement for partial assignment of inheritance rights',
-    docusealTemplateId: 10,
+    docusealTemplateId: 26,
     docusealExternalId: 'partial-assignment',
   },
   {
@@ -105,7 +105,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'client-satisfaction-survey.docx',
     group: 'administrative',
     description: 'Post-service client satisfaction feedback form',
-    docusealTemplateId: 11,
+    docusealTemplateId: 27,
     docusealExternalId: 'client-survey',
   },
   {
@@ -114,7 +114,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'employment-agreement.docx',
     group: 'agreements',
     description: 'Agent employment terms and conditions',
-    docusealTemplateId: 12,
+    docusealTemplateId: 28,
     docusealExternalId: 'employment-agreement',
   },
   {
@@ -123,7 +123,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'government-audit-beneficiary-fee-agreement.docx',
     group: 'agreements',
     description: 'Fee agreement for government audit and beneficiary locator services',
-    docusealTemplateId: 13,
+    docusealTemplateId: 29,
     docusealExternalId: 'govt-audit-fee',
   },
   {
@@ -132,7 +132,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'pre-estate-finders-fee-agreement.docx',
     group: 'agreements',
     description: 'Fee agreement for estate finding services',
-    docusealTemplateId: 14,
+    docusealTemplateId: 30,
     docusealExternalId: 'pre-estate-finders',
   },
   {
@@ -141,7 +141,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'third-party-authorization-form.docx',
     group: 'authorization',
     description: 'Authorization for third-party information access',
-    docusealTemplateId: 15,
+    docusealTemplateId: 31,
     docusealExternalId: 'third-party-auth',
   },
   {
@@ -150,7 +150,7 @@ export const CONTRACT_DOCUMENTS: ContractDocument[] = [
     filename: 'assignment-of-rights-agreement-copy.docx',
     group: 'authorization',
     description: 'Duplicate copy of the assignment of rights agreement',
-    docusealTemplateId: 16,
+    docusealTemplateId: 32,
     docusealExternalId: 'assignment-of-rights-notary',
   },
   {
