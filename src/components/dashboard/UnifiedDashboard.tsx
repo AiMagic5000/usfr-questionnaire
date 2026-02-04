@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react'
 import { QuestionnaireContent } from '../questionnaire/QuestionnaireContent'
-import { ContractLibrary } from './ContractLibrary'
+import { DocumentsTab } from './DocumentsTab'
 import { NotaryTab } from './NotaryTab'
 import { CONTRACT_DOCUMENTS } from '@/lib/contract-documents'
 
@@ -151,7 +151,7 @@ export function UnifiedDashboard() {
       case 'questionnaire':
         return <QuestionnaireContent embedded={true} />
       case 'documents':
-        return <ContractLibrary />
+        return <DocumentsTab documents={documents} />
       case 'notary':
         return <NotaryTab />
       case 'help':
