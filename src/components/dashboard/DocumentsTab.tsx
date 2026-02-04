@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 import {
   PenTool,
   Clock,
@@ -8,46 +10,85 @@ import {
   Stamp,
   ChevronRight,
   FileCheck,
+  Loader2,
+  Sparkles,
 } from 'lucide-react'
 import { ContractLibrary } from './ContractLibrary'
-import type { Document } from './UnifiedDashboard'
 
-interface DocumentsTabProps {
-  documents: Document[]
+interface CaseDocument {
+  id: string
+  title: string
+  description: string
+  status: string
+  requires_notary: boolean
+  document_group: string
+  priority: number
+  form_data: Record<string, string>
+  signature_url: string | null
+  signed_at: string | null
+  notarized_at: string | null
+  case_id: string
 }
 
-export function DocumentsTab({ documents }: DocumentsTabProps) {
+const statusConfig = {
+  pending: {
+    label: 'Ready to Sign',
+    bg: 'bg-green-100',
+    text: 'text-green-600',
+    icon: PenTool,
+  },
+  signed: {
+    label: 'Signed',
+    bg: 'bg-blue-100',
+    text: 'text-blue-600',
+    icon: CheckCircle2,
+  },
+  printed: {
+    label: 'Printed',
+    bg: 'bg-gray-100',
+    text: 'text-gray-500',
+    icon: CheckCircle2,
+  },
+} as const
+
+type StatusKey = keyof typeof statusConfig
+
+export function DocumentsTab() {
+  const { user } = useUser()
   const router = useRouter()
+  const [caseDocuments, setCaseDocuments] = useState<CaseDocument[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasCase, setHasCase] = useState(false)
 
-  const signingQueue = documents.filter(d => d.status !== 'completed')
-  const completedDocs = documents.filter(d => d.status === 'completed')
+  useEffect(() => {
+    loadDocuments()
+  }, [user])
 
-  const statusConfig = {
-    pending: {
-      label: 'Preparing',
-      bg: 'bg-yellow-100',
-      text: 'text-yellow-600',
-      icon: Clock,
-    },
-    ready_to_sign: {
-      label: 'Ready to Sign',
-      bg: 'bg-green-100',
-      text: 'text-green-600',
-      icon: PenTool,
-    },
-    awaiting_notary: {
-      label: 'Needs Notary',
-      bg: 'bg-purple-100',
-      text: 'text-purple-600',
-      icon: Stamp,
-    },
-    completed: {
-      label: 'Signed',
-      bg: 'bg-gray-100',
-      text: 'text-gray-500',
-      icon: CheckCircle2,
-    },
-  } as const
+  const loadDocuments = async () => {
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const clerkId = user.id
+      const res = await fetch(`/api/documents?clerk_user_id=${clerkId}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.documents && data.documents.length > 0) {
+          setCaseDocuments(data.documents)
+          setHasCase(true)
+        }
+      }
+    } catch {
+      // Silently fail - will show empty state
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const signingQueue = caseDocuments.filter(d => d.status === 'pending')
+  const signedDocs = caseDocuments.filter(d => d.status === 'signed' || d.status === 'printed')
 
   return (
     <div className="space-y-8">
@@ -60,18 +101,27 @@ export function DocumentsTab({ documents }: DocumentsTabProps) {
           <div>
             <h3 className="font-semibold text-usfr-dark text-lg">Documents to Sign</h3>
             <p className="text-sm text-gray-500">
-              {signingQueue.length > 0
-                ? `${signingQueue.length} document${signingQueue.length !== 1 ? 's' : ''} awaiting your action`
-                : 'All documents are signed'}
+              {isLoading
+                ? 'Loading documents...'
+                : signingQueue.length > 0
+                  ? `${signingQueue.length} document${signingQueue.length !== 1 ? 's' : ''} awaiting your signature`
+                  : hasCase
+                    ? 'All documents are signed'
+                    : 'Complete the questionnaire to generate your document package'}
             </p>
           </div>
         </div>
 
-        {signingQueue.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        ) : signingQueue.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {signingQueue.map(doc => {
-              const config = statusConfig[doc.status]
+              const config = statusConfig[(doc.status as StatusKey)] || statusConfig.pending
               const StatusIcon = config.icon
+              const populatedFields = Object.values(doc.form_data || {}).filter(v => v && String(v).trim()).length
               return (
                 <button
                   key={doc.id}
@@ -89,21 +139,22 @@ export function DocumentsTab({ documents }: DocumentsTabProps) {
                         </h4>
                         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-usfr-secondary flex-shrink-0 transition-colors" />
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{doc.description}</p>
-                      <div className="flex items-center gap-2 mt-2">
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{doc.description}</p>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${config.bg} ${config.text}`}>
                           <StatusIcon className="w-3 h-3" />
                           {config.label}
                         </span>
-                        {doc.requiresNotary && doc.status !== 'awaiting_notary' && (
+                        {doc.requires_notary && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-600">
                             <Stamp className="w-3 h-3" />
                             Notary Required
                           </span>
                         )}
-                        {doc.aiPopulated && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600">
-                            AI-Filled
+                        {populatedFields > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600">
+                            <Sparkles className="w-3 h-3" />
+                            {populatedFields} Fields Filled
                           </span>
                         )}
                       </div>
@@ -113,6 +164,14 @@ export function DocumentsTab({ documents }: DocumentsTabProps) {
               )
             })}
           </div>
+        ) : !hasCase ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
+            <Sparkles className="w-10 h-10 text-blue-500 mx-auto mb-2" />
+            <p className="font-medium text-blue-900">No Active Case</p>
+            <p className="text-sm text-blue-700 mt-1">
+              Complete the intake questionnaire and your personalized document package will be generated automatically.
+            </p>
+          </div>
         ) : (
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
             <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-2" />
@@ -121,14 +180,14 @@ export function DocumentsTab({ documents }: DocumentsTabProps) {
           </div>
         )}
 
-        {/* Completed documents */}
-        {completedDocs.length > 0 && (
+        {/* Signed documents */}
+        {signedDocs.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
-              Recently Completed
+              Completed ({signedDocs.length})
             </p>
             <div className="space-y-2">
-              {completedDocs.map(doc => (
+              {signedDocs.map(doc => (
                 <div
                   key={doc.id}
                   className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
@@ -136,11 +195,19 @@ export function DocumentsTab({ documents }: DocumentsTabProps) {
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-700 truncate">{doc.title}</p>
-                    {doc.signedAt && (
-                      <p className="text-xs text-gray-400">
-                        Signed {new Date(doc.signedAt).toLocaleDateString()}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {doc.signed_at && (
+                        <p className="text-xs text-gray-400">
+                          Signed {new Date(doc.signed_at).toLocaleDateString()}
+                        </p>
+                      )}
+                      {doc.requires_notary && !doc.notarized_at && (
+                        <span className="text-xs text-purple-600 font-medium">Awaiting notarization</span>
+                      )}
+                      {doc.notarized_at && (
+                        <span className="text-xs text-green-600 font-medium">Notarized</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

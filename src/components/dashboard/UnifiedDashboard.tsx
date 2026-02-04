@@ -151,7 +151,7 @@ export function UnifiedDashboard() {
       case 'questionnaire':
         return <QuestionnaireContent embedded={true} />
       case 'documents':
-        return <DocumentsTab documents={documents} />
+        return <DocumentsTab />
       case 'notary':
         return <NotaryTab />
       case 'help':

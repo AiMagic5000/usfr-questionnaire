@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import {
@@ -11,10 +11,10 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Download,
-  AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Stamp,
+  Download,
 } from 'lucide-react'
 import { SignaturePad } from './SignaturePad'
 
@@ -22,173 +22,169 @@ interface DocumentSigningViewProps {
   documentId: string
 }
 
-// Mock document data - in production, fetch from API
-const MOCK_DOCUMENTS: Record<string, {
+interface DocumentField {
+  id: string
+  label: string
+  type: string
+  required: boolean
+  value?: string
+  default?: string
+}
+
+interface DocumentData {
+  id: string
   title: string
-  content: string
-  fields: Array<{
-    id: string
-    label: string
-    value: string
-    type: 'text' | 'date' | 'signature' | 'initials'
-    required: boolean
-    aiPopulated: boolean
-  }>
-}> = {
-  'doc-1': {
-    title: 'Surplus Funds Claim Application',
-    content: `
-SURPLUS FUNDS CLAIM APPLICATION
-
-STATE OF [STATE]
-COUNTY OF [COUNTY]
-
-I, [CLAIMANT_NAME], hereby submit this claim for surplus funds resulting from the foreclosure sale of the property located at:
-
-[PROPERTY_ADDRESS]
-[PROPERTY_CITY], [PROPERTY_STATE] [PROPERTY_ZIP]
-
-CLAIMANT INFORMATION:
-Name: [CLAIMANT_NAME]
-Date of Birth: [DOB]
-Current Address: [CURRENT_ADDRESS]
-Phone: [PHONE]
-Email: [EMAIL]
-
-PROPERTY INFORMATION:
-Parcel Number: [PARCEL_NUMBER]
-Foreclosure Sale Date: [SALE_DATE]
-Type of Foreclosure: [FORECLOSURE_TYPE]
-
-I hereby certify that I am entitled to claim the surplus funds from the above-referenced foreclosure sale, and that all information provided in this application is true and correct to the best of my knowledge.
-
-SIGNATURE: ____________________________
-DATE: ____________________________
-    `,
-    fields: [
-      { id: 'claimant_name', label: 'Full Legal Name', value: 'John Michael Smith', type: 'text', required: true, aiPopulated: true },
-      { id: 'dob', label: 'Date of Birth', value: '1985-03-15', type: 'date', required: true, aiPopulated: true },
-      { id: 'property_address', label: 'Property Address', value: '123 Main Street', type: 'text', required: true, aiPopulated: true },
-      { id: 'property_city', label: 'City', value: 'Phoenix', type: 'text', required: true, aiPopulated: true },
-      { id: 'property_state', label: 'State', value: 'AZ', type: 'text', required: true, aiPopulated: true },
-      { id: 'sale_date', label: 'Foreclosure Sale Date', value: '2024-01-15', type: 'date', required: true, aiPopulated: true },
-      { id: 'signature', label: 'Your Signature', value: '', type: 'signature', required: true, aiPopulated: false },
-      { id: 'sign_date', label: 'Date', value: new Date().toISOString().split('T')[0], type: 'date', required: true, aiPopulated: true },
-    ]
-  },
-  'doc-2': {
-    title: 'Authorization to Release Information',
-    content: `
-AUTHORIZATION TO RELEASE INFORMATION
-
-I, [CLAIMANT_NAME], hereby authorize US Foreclosure Recovery and its agents to:
-
-1. Obtain any and all records related to the property at [PROPERTY_ADDRESS]
-2. Communicate with county offices, financial institutions, and other relevant parties
-3. Access foreclosure sale records and surplus fund information
-4. Act on my behalf in matters related to surplus fund recovery
-
-This authorization is valid from the date signed until the claim is resolved or until revoked in writing.
-
-SIGNATURE: ____________________________
-DATE: ____________________________
-    `,
-    fields: [
-      { id: 'claimant_name', label: 'Full Legal Name', value: 'John Michael Smith', type: 'text', required: true, aiPopulated: true },
-      { id: 'property_address', label: 'Property Address', value: '123 Main Street, Phoenix, AZ 85001', type: 'text', required: true, aiPopulated: true },
-      { id: 'signature', label: 'Your Signature', value: '', type: 'signature', required: true, aiPopulated: false },
-      { id: 'sign_date', label: 'Date', value: new Date().toISOString().split('T')[0], type: 'date', required: true, aiPopulated: true },
-    ]
-  },
-  'doc-6': {
-    title: 'W-9 Tax Form',
-    content: `
-FORM W-9 - REQUEST FOR TAXPAYER IDENTIFICATION NUMBER
-
-Name: [NAME]
-Business name/disregarded entity name: [BUSINESS_NAME]
-Address: [ADDRESS]
-City, State, ZIP: [CITY_STATE_ZIP]
-
-Taxpayer Identification Number (SSN): XXX-XX-[SSN_LAST4]
-
-Under penalties of perjury, I certify that the information provided is correct.
-
-SIGNATURE: ____________________________
-DATE: ____________________________
-    `,
-    fields: [
-      { id: 'name', label: 'Full Legal Name', value: 'John Michael Smith', type: 'text', required: true, aiPopulated: true },
-      { id: 'address', label: 'Current Address', value: '456 New Home Ave', type: 'text', required: true, aiPopulated: true },
-      { id: 'city_state_zip', label: 'City, State, ZIP', value: 'Phoenix, AZ 85001', type: 'text', required: true, aiPopulated: true },
-      { id: 'ssn_last4', label: 'SSN (Last 4 digits)', value: '1234', type: 'text', required: true, aiPopulated: true },
-      { id: 'signature', label: 'Your Signature', value: '', type: 'signature', required: true, aiPopulated: false },
-      { id: 'sign_date', label: 'Date', value: new Date().toISOString().split('T')[0], type: 'date', required: true, aiPopulated: true },
-    ]
-  }
+  description: string
+  file_url: string
+  file_name: string
+  status: string
+  form_data: Record<string, string>
+  requires_notary: boolean
+  signature_url: string | null
+  signed_at: string | null
+  notarized_at: string | null
+  document_group: string
+  case_id: string
+  template_id: string
 }
 
 export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
   const { user, isLoaded } = useUser()
   const router = useRouter()
-  const [document, setDocument] = useState<typeof MOCK_DOCUMENTS['doc-1'] | null>(null)
-  const [fields, setFields] = useState<typeof MOCK_DOCUMENTS['doc-1']['fields']>([])
+  const [document, setDocument] = useState<DocumentData | null>(null)
+  const [templateFields, setTemplateFields] = useState<DocumentField[]>([])
+  const [formValues, setFormValues] = useState<Record<string, string>>({})
   const [signatureData, setSignatureData] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [zoom, setZoom] = useState(100)
   const [showSignaturePad, setShowSignaturePad] = useState(false)
 
   useEffect(() => {
-    // Load document data
-    const doc = MOCK_DOCUMENTS[documentId]
-    if (doc) {
-      setDocument(doc)
-      setFields(doc.fields)
-    }
+    loadDocument()
   }, [documentId])
 
+  const loadDocument = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // Fetch document from API
+      const res = await fetch(`/api/documents?document_id=${documentId}`)
+      if (!res.ok) {
+        throw new Error('Document not found')
+      }
+      const data = await res.json()
+      const doc = data.document
+
+      if (!doc) {
+        throw new Error('Document not found')
+      }
+
+      setDocument(doc)
+
+      // If already signed, show the signature
+      if (doc.signature_url) {
+        setSignatureData(doc.signature_url)
+      }
+
+      // Load template to get field definitions
+      if (doc.template_id) {
+        const templateRes = await fetch(`/api/documents/templates?template_id=${doc.template_id}`)
+        if (templateRes.ok) {
+          const templateData = await templateRes.json()
+          const fields = templateData.template?.form_fields?.fields || []
+          setTemplateFields(fields)
+        }
+      }
+
+      // Set form values from document form_data
+      setFormValues(doc.form_data || {})
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load document')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleFieldChange = (fieldId: string, value: string) => {
-    setFields(prev => prev.map(f =>
-      f.id === fieldId ? { ...f, value } : f
-    ))
+    setFormValues(prev => ({ ...prev, [fieldId]: value }))
   }
 
   const handleSignatureComplete = (signature: string) => {
     setSignatureData(signature)
     setShowSignaturePad(false)
-    // Update the signature field
-    setFields(prev => prev.map(f =>
-      f.type === 'signature' ? { ...f, value: signature } : f
-    ))
   }
 
   const handleSubmit = async () => {
-    // Validate all required fields
-    const missingFields = fields.filter(f => f.required && !f.value)
+    if (!document || !signatureData) return
+
+    // Validate required fields
+    const missingFields = templateFields
+      .filter(f => f.required && f.type !== 'signature' && !formValues[f.id])
+      .map(f => f.label)
+
     if (missingFields.length > 0) {
-      alert(`Please complete all required fields: ${missingFields.map(f => f.label).join(', ')}`)
+      alert(`Please complete all required fields: ${missingFields.join(', ')}`)
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      // In production, send to API
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const res = await fetch('/api/documents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          document_id: document.id,
+          action: 'sign',
+          signature_url: signatureData,
+          form_data: formValues,
+          actor_email: user?.primaryEmailAddress?.emailAddress || 'unknown',
+          signer_ip: 'client',
+          signer_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        }),
+      })
+
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || 'Failed to sign document')
+      }
+
       setIsComplete(true)
-    } catch (error) {
-      console.error('Error submitting document:', error)
-      alert('Failed to submit document. Please try again.')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to submit document. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  if (!isLoaded || !document) {
+  if (!isLoaded || isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-usfr-primary border-t-transparent rounded-full" />
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-usfr-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-500">Loading document...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !document) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
+          <h2 className="text-xl font-bold text-usfr-dark mb-4">Document Not Found</h2>
+          <p className="text-gray-600 mb-6">{error || 'This document could not be loaded.'}</p>
+          <button
+            onClick={() => router.push('/dashboard?tab=documents')}
+            className="w-full py-3 bg-usfr-primary text-white rounded-lg font-medium hover:bg-usfr-primary/90 transition-colors"
+          >
+            Return to Documents
+          </button>
+        </div>
       </div>
     )
   }
@@ -201,9 +197,17 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
             <CheckCircle2 className="w-10 h-10 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-usfr-dark mb-4">Document Signed!</h2>
-          <p className="text-gray-600 mb-6">
-            Your signature has been recorded. This document is now complete.
+          <p className="text-gray-600 mb-2">
+            Your signature has been recorded and securely stored.
           </p>
+          {document.requires_notary && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 text-purple-700">
+                <Stamp className="w-4 h-4" />
+                <span className="text-sm font-medium">This document requires notarization</span>
+              </div>
+            </div>
+          )}
           <button
             onClick={() => router.push('/dashboard?tab=documents')}
             className="w-full py-3 bg-usfr-primary text-white rounded-lg font-medium hover:bg-usfr-primary/90 transition-colors"
@@ -215,9 +219,9 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
     )
   }
 
-  const signatureField = fields.find(f => f.type === 'signature')
-  const otherFields = fields.filter(f => f.type !== 'signature')
-  const aiPopulatedCount = fields.filter(f => f.aiPopulated).length
+  const signatureFields = templateFields.filter(f => f.type === 'signature')
+  const otherFields = templateFields.filter(f => f.type !== 'signature')
+  const populatedCount = Object.values(formValues).filter(v => v && v.trim()).length
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -234,10 +238,24 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
               </button>
               <div>
                 <h1 className="text-lg font-bold text-usfr-dark">{document.title}</h1>
-                <p className="text-sm text-gray-500">Review and sign this document</p>
+                <p className="text-sm text-gray-500">{document.description}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {document.requires_notary && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
+                  <Stamp className="w-3 h-3" />
+                  Notary Required
+                </span>
+              )}
+              <a
+                href={document.file_url}
+                download={document.file_name}
+                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                title="Download template"
+              >
+                <Download className="w-5 h-5" />
+              </a>
               <button
                 onClick={() => setZoom(z => Math.max(50, z - 10))}
                 className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
@@ -261,29 +279,65 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
           {/* Document Preview */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              {/* AI Notice */}
+              {/* Auto-populated notice */}
               <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
                 <div className="flex items-center gap-3">
                   <Sparkles className="w-5 h-5 text-blue-600" />
                   <div>
                     <p className="font-medium text-blue-900">
-                      {aiPopulatedCount} of {fields.length} fields auto-populated
+                      {populatedCount} of {otherFields.length} fields auto-populated from your questionnaire
                     </p>
                     <p className="text-sm text-blue-700">
-                      Review the information below and make any necessary corrections.
+                      Review the information below and make any necessary corrections before signing.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Document Content */}
+              {/* Document template preview / download */}
               <div
                 className="p-8 bg-white"
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}
               >
-                <pre className="whitespace-pre-wrap font-serif text-gray-800 leading-relaxed">
-                  {document.content}
-                </pre>
+                <div className="text-center mb-8">
+                  <h2 className="text-xl font-bold text-gray-800 uppercase tracking-wide">
+                    {document.title}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Download the template below to view the full document, then complete the fields on the right and add your signature.
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <a
+                    href={document.file_url}
+                    download={document.file_name}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-usfr-primary text-white rounded-lg font-medium hover:bg-usfr-primary/90 transition-colors"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download {document.file_name}
+                  </a>
+                  <p className="text-xs text-gray-400 mt-3">
+                    DOCX format - viewable in Microsoft Word, Google Docs, or any document viewer
+                  </p>
+                </div>
+
+                {/* Show field summary */}
+                {otherFields.length > 0 && (
+                  <div className="mt-8 border-t border-gray-200 pt-6">
+                    <h3 className="font-semibold text-gray-700 mb-4">Document Data Summary</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {otherFields.map(field => (
+                        <div key={field.id} className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500">{field.label}</p>
+                          <p className="font-medium text-gray-900 text-sm">
+                            {formValues[field.id] || '--'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -291,31 +345,33 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
           {/* Fields Panel */}
           <div className="space-y-6">
             {/* Field Inputs */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-usfr-dark mb-4">Document Fields</h3>
-              <div className="space-y-4">
-                {otherFields.map(field => (
-                  <div key={field.id}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                      {field.aiPopulated && (
-                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs">
-                          <Sparkles className="w-3 h-3" />
-                          AI
-                        </span>
-                      )}
-                    </label>
-                    <input
-                      type={field.type === 'date' ? 'date' : 'text'}
-                      value={field.value}
-                      onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-usfr-secondary focus:border-transparent"
-                    />
-                  </div>
-                ))}
+            {otherFields.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="font-semibold text-usfr-dark mb-4">Document Fields</h3>
+                <div className="space-y-4">
+                  {otherFields.map(field => (
+                    <div key={field.id}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {field.label}
+                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                        {formValues[field.id] && (
+                          <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-xs">
+                            <Sparkles className="w-3 h-3" />
+                            Auto
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type={field.type === 'date' ? 'date' : 'text'}
+                        value={formValues[field.id] || ''}
+                        onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-usfr-secondary focus:border-transparent"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Signature Section */}
             <div className="bg-white rounded-xl shadow-sm p-6">
@@ -350,6 +406,15 @@ export function DocumentSigningView({ documentId }: DocumentSigningViewProps) {
                   <span className="font-medium">Click to Sign</span>
                 </button>
               )}
+            </div>
+
+            {/* Legal consent */}
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                By clicking "Complete & Submit", you agree that your electronic signature is legally
+                binding and equivalent to your handwritten signature. This document, your signature,
+                IP address, and timestamp are securely recorded for legal compliance.
+              </p>
             </div>
 
             {/* Submit Button */}
