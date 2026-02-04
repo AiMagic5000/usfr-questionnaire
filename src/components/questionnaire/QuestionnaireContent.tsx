@@ -30,6 +30,7 @@ import type {
   Authorization,
 } from '@/lib/schema'
 import { CheckCircle, Phone, Mail, Info, FileCheck } from 'lucide-react'
+import type { MappedFormData } from '@/lib/lead-to-form-mapper'
 
 const STEPS = [
   { id: 0, name: 'Agent Identification', shortName: 'Agent' },
@@ -152,6 +153,15 @@ export function QuestionnaireContent({ embedded = false }: QuestionnaireContentP
     markStepComplete(0)
     setCurrentStep(1)
   }
+
+  const handleImportLead = useCallback((mapped: MappedFormData) => {
+    setFormData((prev) => ({
+      ...prev,
+      personalInfo: { ...prev.personalInfo, ...mapped.personalInfo },
+      propertyInfo: { ...prev.propertyInfo, ...mapped.propertyInfo },
+      liens: { ...prev.liens, ...mapped.liens },
+    }))
+  }, [])
 
   const handlePersonalInfo = (data: PersonalInfo) => {
     setFormData((prev) => ({ ...prev, personalInfo: data }))
@@ -372,7 +382,7 @@ export function QuestionnaireContent({ embedded = false }: QuestionnaireContentP
           </div>
 
           {currentStep === 0 && (
-            <AgentIdentificationStep data={formData.agentIdentification} onNext={handleAgentIdentification} />
+            <AgentIdentificationStep data={formData.agentIdentification} onNext={handleAgentIdentification} onImportLead={handleImportLead} />
           )}
           {currentStep === 1 && (
             <PersonalInfoStep data={formData.personalInfo} onNext={handlePersonalInfo} />
