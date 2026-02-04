@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { document_id, action, form_data, signature_url, signer_ip, signer_user_agent } = body
+    const { document_id, action, form_data, signature_url, signed_pdf_url, signer_ip, signer_user_agent } = body
 
     if (!document_id || !action) {
       return NextResponse.json(
@@ -141,6 +141,7 @@ export async function PATCH(request: NextRequest) {
           )
         }
         updates.signature_url = signature_url
+        updates.signed_pdf_url = signed_pdf_url || null
         updates.signed_at = new Date().toISOString()
         updates.signer_ip = signer_ip || null
         updates.signer_user_agent = signer_user_agent || null
