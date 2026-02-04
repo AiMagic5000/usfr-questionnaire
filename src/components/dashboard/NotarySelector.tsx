@@ -233,46 +233,58 @@ export function NotarySelector({ initialState, initialCounty, onSelect, selected
           <span className="ml-2 text-sm text-gray-500">Searching notaries...</span>
         </div>
       ) : notaries.length > 0 ? (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {notaries.map(notary => {
+        <div className="space-y-3 max-h-[500px] overflow-y-auto">
+          {notaries.map((notary, index) => {
             const isSelected = selectedNotary?.id === notary.id
+            const imageIndex = (index % 6) + 1
             return (
               <button
                 key={notary.id}
                 type="button"
                 onClick={() => handleSelectNotary(notary)}
-                className={`w-full text-left p-3 rounded-lg border transition-all ${
+                className={`w-full text-left rounded-xl border overflow-hidden transition-all ${
                   isSelected
-                    ? 'border-usfr-secondary bg-usfr-secondary/5 ring-2 ring-usfr-secondary'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    ? 'border-usfr-secondary ring-2 ring-usfr-secondary'
+                    : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
                 }`}
               >
-                <div className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isSelected ? 'bg-usfr-secondary text-white' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {isSelected ? <CheckCircle2 className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm">{notary.business_name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {renderStars(notary.rating)}
-                      {notary.review_count > 0 && (
-                        <span className="text-xs text-gray-400">({notary.review_count} reviews)</span>
-                      )}
+                {/* Notary Image */}
+                <div className="relative h-28 overflow-hidden bg-gray-100">
+                  <img
+                    src={`/images/notary/notary-${imageIndex}.png`}
+                    alt="Notary Services"
+                    className="w-full h-full object-cover"
+                  />
+                  {isSelected && (
+                    <div className="absolute top-2 right-2 bg-usfr-secondary text-white rounded-full p-1">
+                      <CheckCircle2 className="w-4 h-4" />
                     </div>
-                    {notary.address && (
-                      <p className="text-xs text-gray-500 mt-1 truncate">
-                        {notary.address}{notary.city ? `, ${notary.city}` : ''}{notary.state_abbr ? `, ${notary.state_abbr}` : ''}{notary.zip_code ? ` ${notary.zip_code}` : ''}
-                      </p>
-                    )}
-                    {notary.phone && (
-                      <p className="text-xs text-usfr-primary mt-1">
-                        <Phone className="w-3 h-3 inline mr-1" />
-                        {notary.phone}
-                      </p>
-                    )}
+                  )}
+                  {notary.rating && (
+                    <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                      <span className="text-xs font-medium">{notary.rating.toFixed(1)}</span>
+                    </div>
+                  )}
+                </div>
+                {/* Notary Info */}
+                <div className="p-3">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{notary.business_name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                    <p className="text-xs text-gray-500 truncate">
+                      {notary.city || notary.county_name}{notary.state_abbr ? `, ${notary.state_abbr}` : ''}{notary.zip_code ? ` ${notary.zip_code}` : ''}
+                    </p>
                   </div>
+                  {notary.phone && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Phone className="w-3 h-3 text-usfr-primary flex-shrink-0" />
+                      <p className="text-xs text-usfr-primary font-medium">{notary.phone}</p>
+                    </div>
+                  )}
+                  {notary.address && (
+                    <p className="text-xs text-gray-400 mt-1 truncate">{notary.address}</p>
+                  )}
                 </div>
               </button>
             )
